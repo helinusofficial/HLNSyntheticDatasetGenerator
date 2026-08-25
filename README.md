@@ -2,73 +2,113 @@
 
 A production-ready pipeline for generating synthetic instruction-tuning datasets from local GGUF language models using `llama.cpp`.
 
-The generator is designed to generate, validate, filter, normalize, deduplicate, checkpoint, and export high-quality synthetic user-assistant conversations for **instruction tuning and supervised fine-tuning (SFT)**.
+The generator creates high-quality synthetic **user-assistant conversation datasets** designed for:
 
-The generation process runs locally using a GGUF-compatible language model through `llama.cpp`. The project is model-agnostic and can work with compatible GGUF language models. The example configuration uses **Qwen3-8B-Q6_K.gguf** as the generation model.
+- Instruction Tuning
+- Supervised Fine-Tuning (SFT)
+- Chat model adaptation
+- Domain-specific language model training
 
-The generator creates diverse user-assistant conversations and automatically validates, filters, deduplicates, checkpoints, and exports accepted samples as Parquet datasets.
+The pipeline runs fully locally with GGUF-compatible models and automatically handles:
+
+- Dataset generation
+- JSON parsing
+- Schema validation
+- Text normalization
+- Language validation
+- Quality filtering
+- Duplicate detection
+- Checkpointing
+- Parquet export
+
+The generator is model-agnostic and supports different GGUF models.  
+The default example configuration uses:
+
+`Qwen3-8B-Q6_K.gguf`
+
+---
 
 ## Features
 
-* Local GGUF model inference with `llama.cpp`
-* Persian, English, and German dataset generation
-* Configurable topics and response styles
-* JSON structure validation
-* Language and text validation
-* Persian text normalization
-* Minimum and maximum response length control
-* Quality scoring and filtering
-* Duplicate detection
-* Automatic retry for failed generations
-* Checkpoint and resume support
-* Sharded Parquet output
-* Optional LLM-based quality judging
-* Reproducible generation with configurable seeds
+- Local GGUF inference using `llama.cpp`
+- Persian and English dataset generation
+- Configurable topics, tasks, styles, audiences, and question types
+- Single-turn and multi-turn conversation generation
+- Strict JSON output enforcement
+- Message structure validation
+- Language consistency checking
+- Persian text normalization
+- Character and punctuation normalization
+- Word length constraints
+- Quality scoring and filtering
+- Duplicate conversation detection
+- Duplicate user question detection
+- Automatic retry mechanism
+- Checkpoint and resume support
+- Sharded Parquet export
+- Optional LLM-based quality evaluation
+- Reproducible generation with configurable seeds
 
-## Pipeline
+---
+
+## Generation Pipeline
 
 ```text
-Generate
-   ↓
-Parse
-   ↓
-Validate
-   ↓
-Normalize
-   ↓
-Quality Check
-   ↓
-Deduplicate
-   ↓
-Checkpoint
-   ↓
-Parquet
+Generate Samples
+        ↓
+Parse JSON
+        ↓
+Validate Structure
+        ↓
+Normalize Text
+        ↓
+Validate Language
+        ↓
+Quality Scoring
+        ↓
+Duplicate Detection
+        ↓
+Save Checkpoint
+        ↓
+Export Dataset
 ```
+
+---
 
 ## Requirements
 
-* Python 3.10+
-* A GGUF-compatible language model
-* `llama-cpp-python`
-* `datasets`
-* `pyarrow`
+- Python 3.10+
+- GGUF-compatible language model
+- llama-cpp-python
+- datasets
+- pyarrow
 
-### Installation
+---
+
+## Installation
 
 ```bash
 pip install llama-cpp-python datasets pyarrow
 ```
 
+---
+
 ## Configuration
 
-Configure the generator through `SyntheticDatasetConfig`:
+The generator is configured through `SyntheticDatasetConfig`.
+
+Example:
 
 ```python
 class SyntheticDatasetConfig:
+
     model_path = r"C:\models\Qwen3-8B-Q6_K.gguf"
-    output_path = r"./dataset/synthetic.parquet"
+
+    output_path = "./dataset/synthetic.parquet"
 
     total_samples = 10000
+
+    language = "fa"
 
     n_ctx = 4096
     n_threads = 8
@@ -76,15 +116,17 @@ class SyntheticDatasetConfig:
     n_gpu_layers = 0
 
     seed = 42
-    language = "fa"
+
     max_tokens = 1536
 
     shard_size = 5000
     checkpoint_interval = 1000
+
     max_attempts_multiplier = 15
 
     min_user_words = 5
     max_user_words = 180
+
     min_assistant_words = 20
     max_assistant_words = 900
 
@@ -100,101 +142,96 @@ class SyntheticDatasetConfig:
     enable_quality_judge = False
     judge_model_path = None
 
-    keep_shards = True
     export_final = True
     cleanup_shards = False
+
+    multi_turn = True
+    min_turns = 2
+    max_turns = 5
 ```
 
-## Main Options
+---
 
-| Option                 | Description                                               |
-| ---------------------- | --------------------------------------------------------- |
-| `model_path`           | Path to the GGUF generation model                         |
-| `output_path`          | Final Parquet output path                                 |
-| `total_samples`        | Number of accepted samples to generate                    |
-| `language`             | Dataset language: `fa`, `en`, or `de`                     |
-| `n_ctx`                | Model context size                                        |
-| `n_threads`            | Number of CPU threads                                     |
-| `n_batch`              | Model evaluation batch size                               |
-| `n_gpu_layers`         | Number of GPU-offloaded layers; use `-1` for full offload |
-| `max_tokens`           | Maximum number of generated tokens                        |
-| `shard_size`           | Number of samples per Parquet shard                       |
-| `checkpoint_interval`  | Number of accepted samples between checkpoints            |
-| `min_quality_score`    | Minimum quality score required for acceptance             |
-| `temperature`          | Generation temperature                                    |
-| `top_p`                | Nucleus sampling parameter                                |
-| `repeat_penalty`       | Repetition penalty                                        |
-| `enable_quality_judge` | Enable secondary LLM-based quality evaluation             |
-| `keep_shards`          | Keep generated Parquet shards                             |
-| `export_final`         | Export the final combined dataset                         |
-| `cleanup_shards`       | Remove shards after final export                          |
+## Configuration Options
+
+| Option | Description |
+|---|---|
+| `model_path` | Path to GGUF generation model |
+| `output_path` | Final Parquet output path |
+| `total_samples` | Number of accepted samples |
+| `language` | Dataset language (`fa` or `en`) |
+| `n_ctx` | Model context size |
+| `n_threads` | CPU thread count |
+| `n_batch` | Inference batch size |
+| `n_gpu_layers` | GPU offloaded layers |
+| `max_tokens` | Maximum generated tokens |
+| `shard_size` | Samples per Parquet shard |
+| `checkpoint_interval` | Checkpoint frequency |
+| `temperature` | Sampling temperature |
+| `top_p` | Nucleus sampling parameter |
+| `min_p` | Minimum probability filtering |
+| `repeat_penalty` | Repetition control |
+| `retry_count` | Retry count per sample |
+| `min_quality_score` | Minimum accepted quality score |
+| `enable_quality_judge` | Enable secondary LLM evaluation |
+| `multi_turn` | Enable multi-turn conversations |
+| `min_turns` | Minimum conversation turns |
+| `max_turns` | Maximum conversation turns |
+
+---
 
 ## Usage
-
-Initialize the generator with the configured parameters:
 
 ```python
 generator = SyntheticDatasetGenerator(
     model_path=SyntheticDatasetConfig.model_path,
     output_path=SyntheticDatasetConfig.output_path,
     total_samples=SyntheticDatasetConfig.total_samples,
+    language=SyntheticDatasetConfig.language,
     n_ctx=SyntheticDatasetConfig.n_ctx,
     n_threads=SyntheticDatasetConfig.n_threads,
     n_batch=SyntheticDatasetConfig.n_batch,
-    seed=SyntheticDatasetConfig.seed,
-    language=SyntheticDatasetConfig.language,
     n_gpu_layers=SyntheticDatasetConfig.n_gpu_layers,
+    seed=SyntheticDatasetConfig.seed,
     max_tokens=SyntheticDatasetConfig.max_tokens,
-    shard_size=SyntheticDatasetConfig.shard_size,
-    checkpoint_interval=SyntheticDatasetConfig.checkpoint_interval,
-    max_attempts_multiplier=SyntheticDatasetConfig.max_attempts_multiplier,
-    min_user_words=SyntheticDatasetConfig.min_user_words,
-    max_user_words=SyntheticDatasetConfig.max_user_words,
-    min_assistant_words=SyntheticDatasetConfig.min_assistant_words,
-    max_assistant_words=SyntheticDatasetConfig.max_assistant_words,
-    min_quality_score=SyntheticDatasetConfig.min_quality_score,
-    temperature=SyntheticDatasetConfig.temperature,
-    top_p=SyntheticDatasetConfig.top_p,
-    min_p=SyntheticDatasetConfig.min_p,
-    repeat_penalty=SyntheticDatasetConfig.repeat_penalty,
-    retry_count=SyntheticDatasetConfig.retry_count,
-    enable_quality_judge=SyntheticDatasetConfig.enable_quality_judge,
-    judge_model_path=SyntheticDatasetConfig.judge_model_path,
-    keep_shards=SyntheticDatasetConfig.keep_shards,
-    export_final=SyntheticDatasetConfig.export_final,
-    cleanup_shards=SyntheticDatasetConfig.cleanup_shards,
+    topics=SyntheticDatasetConfig.topics
 )
 
 generator.run()
 ```
 
+---
+
 ## Example
 
-To generate 10,000 Persian samples:
+Generate 10,000 Persian multi-turn instruction samples:
 
 ```python
 total_samples = 10000
+
 language = "fa"
+
+multi_turn = True
+
+min_turns = 2
+max_turns = 5
 ```
 
-With:
-
-```python
-shard_size = 5000
-```
-
-the generator produces approximately two Parquet shards and, when final export is enabled, a combined dataset:
+Output:
 
 ```text
 dataset/
+
 ├── synthetic-000000.parquet
 ├── synthetic-000001.parquet
 └── synthetic.parquet
 ```
 
+---
+
 ## Dataset Format
 
-Each generated sample follows the standard conversational message format:
+Each sample follows the standard chat dataset format:
 
 ```json
 {
@@ -211,48 +248,97 @@ Each generated sample follows the standard conversational message format:
 }
 ```
 
-The resulting dataset can be used for instruction tuning and supervised fine-tuning pipelines.
+Multi-turn samples:
 
-## Persian Support
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "..."
+    },
+    {
+      "role": "assistant",
+      "content": "..."
+    },
+    {
+      "role": "user",
+      "content": "..."
+    },
+    {
+      "role": "assistant",
+      "content": "..."
+    }
+  ]
+}
+```
 
-When `language = "fa"`, the generator applies Persian-specific validation and normalization, including:
+---
 
-* Persian character normalization
-* Punctuation normalization
-* Half-space normalization
-* Detection of unwanted Arabic characters
-* Detection of excessive Latin characters
-* Persian language consistency checks
+## Language Support
+
+### Persian (`fa`)
+
+Includes:
+
+- Persian character normalization
+- Arabic character detection
+- Half-space normalization
+- Persian punctuation normalization
+- Latin character ratio checking
+- Persian language consistency validation
+
+### English (`en`)
+
+Includes:
+
+- Natural English validation
+- Language consistency checks
+- Repetition detection
+- Response quality analysis
+
+---
 
 ## Quality Control
 
-A sample is accepted only after passing the configured validation and quality checks.
+Every generated sample passes multiple validation stages:
 
-The generator validates:
+- Valid JSON format
+- Correct message schema
+- Correct role ordering
+- Word length limits
+- Language validation
+- Repetition detection
+- Duplicate detection
+- Quality threshold checking
 
-* JSON structure
-* Message structure
-* User and assistant content
-* Minimum and maximum length constraints
-* Language consistency
-* Repetition
-* Duplicate conversations
-* Duplicate user questions
-* Configured quality threshold
+Optional LLM-based evaluation:
 
-An optional secondary LLM can also be used as a quality judge.
+```python
+enable_quality_judge = True
+```
 
-## Checkpointing
+---
 
-Long-running generation jobs use checkpoints to preserve generation state.
+## Checkpoint and Resume
 
-If a generation process is interrupted, the generator can resume from the latest checkpoint without discarding previously generated data.
+Long generation jobs automatically create checkpoints.
 
-For large datasets, keeping checkpoints and generated shards enabled is recommended.
+If generation stops, the process can resume from the latest saved state.
 
-## Large-Scale Generation
+Stored checkpoint information:
 
-The same pipeline can be used for larger datasets:
+- Current progress
+- Accepted samples
+- Generation attempts
+- Duplicate signatures
+- Validation statistics
+
+---
+
+## Large Scale Generation
+
+The pipeline supports large dataset generation:
 
 ```python
 total_samples = 100000
@@ -264,13 +350,20 @@ or:
 total_samples = 500000
 ```
 
-For large-scale generation, keep sharding and checkpointing enabled:
+Recommended:
 
 ```python
 shard_size = 5000
-keep_shards = True
+
+checkpoint_interval = 1000
+
+cleanup_shards = False
 ```
+
+---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
+
+See the [LICENSE](LICENSE) file for details.

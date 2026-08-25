@@ -1,4 +1,4 @@
-# Synthetic Dataset Generator
+# Helinus Synthetic Dataset Generator
 
 A production-ready pipeline for generating synthetic instruction-tuning datasets from local GGUF language models using `llama.cpp`.
 

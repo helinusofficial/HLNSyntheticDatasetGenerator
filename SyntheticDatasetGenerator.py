@@ -16,7 +16,13 @@ from llama_cpp import Llama
 
 class SyntheticDatasetGenerator:
 
-    def __init__(self, model_path: str, output_path: str, total_samples: int, n_ctx: int = 4096, n_threads: int = 8, n_batch: int = 512, seed: int = 42, language: str = "fa", n_gpu_layers: int = 0, max_tokens: int = 1536, shard_size: int = 5000, checkpoint_interval: int = 1000, max_attempts_multiplier: int = 15, min_user_words: int = 5, max_user_words: int = 180, min_assistant_words: int = 20, max_assistant_words: int = 900, min_quality_score: int = 72, temperature: float = 0.75, top_p: float = 0.9, min_p: float = 0.05, repeat_penalty: float = 1.08, retry_count: int = 4, enable_quality_judge: bool = False, judge_model_path: Optional[str] = None, keep_shards: bool = True):
+    def __init__(self, model_path: str, output_path: str, total_samples: int, n_ctx: int, n_threads: int, n_batch: int,
+                 seed: int, language: str, n_gpu_layers: int, max_tokens: int, shard_size: int,
+                 checkpoint_interval: int, max_attempts_multiplier: int, min_user_words: int,
+                 max_user_words: int, min_assistant_words: int, max_assistant_words: int,
+                 min_quality_score: int, temperature: float, top_p: float, min_p: float,
+                 repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
+                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -102,6 +108,8 @@ class SyntheticDatasetGenerator:
         self.styles = self.config["styles"]
         self.audiences = self.config["audiences"]
         self.question_styles = self.config["question_styles"]
+        self.export_final=export_final
+        self.cleanup_shards=cleanup_shards
 
     def _validate_config(self) -> None:
         if not os.path.isfile(self.model_path):
@@ -631,11 +639,11 @@ Return only valid JSON with exactly two messages: user and assistant."""
         result["acceptance_rate"] = self.accepted / max(1, self.attempts)
         return result
 
-    def run(self, export_final: bool = False, cleanup_shards: bool = False) -> str:
+    def run(self) -> str:
         self.generate()
-        if export_final:
+        if self.export_final:
             result = self.export_final()
-            if cleanup_shards:
+            if self.cleanup_shards:
                 self.cleanup(remove_shards=True)
             print(f"Dataset saved: {result}")
             print(f"Samples: {self.accepted}")

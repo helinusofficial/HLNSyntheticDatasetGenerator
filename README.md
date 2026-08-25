@@ -1,6 +1,10 @@
-# Synthetic Dataset Generator
+# Helinus Synthetic Dataset Generator
 
 A production-ready pipeline for generating synthetic instruction-tuning datasets from local GGUF language models using `llama.cpp`.
+
+The generator is designed to generate, validate, filter, normalize, deduplicate, checkpoint, and export high-quality synthetic user-assistant conversations for **instruction tuning and supervised fine-tuning (SFT)**.
+
+The generation process runs locally using a GGUF-compatible language model through `llama.cpp`. The project is model-agnostic and can work with compatible GGUF language models. The example configuration uses **Qwen3-8B-Q6_K.gguf** as the generation model.
 
 The generator creates diverse user-assistant conversations and automatically validates, filters, deduplicates, checkpoints, and exports accepted samples as Parquet datasets.
 

@@ -2,12 +2,36 @@ class SyntheticDatasetConfig:
     model_path = r"L:\models\Qwen3-8B-Q6_K.gguf"
     output_path = r"./dataset/synthetic.parquet"
     total_samples = 5
-    n_ctx = 4096
-    n_threads = 16
-    n_batch = 256
+    n_ctx = 2048
+    n_threads = 8
+    n_batch = 64
+    max_tokens = 384
+
     n_gpu_layers = 0
     seed = 42
     language = "fa"
+
+    shard_size = 100
+    checkpoint_interval = 50
+    max_attempts_multiplier = 3
+    min_user_words = 3
+    max_user_words = 100
+    min_assistant_words = 10
+    max_assistant_words = 300
+    min_quality_score = 65
+    temperature = 0.75
+    top_p = 0.9
+    min_p = 0.05
+    repeat_penalty = 1.08
+    retry_count = 1
+    enable_quality_judge = False
+    judge_model_path = None
+    export_final = True
+    cleanup_shards = False
+
+    min_turns = 2
+    max_turns = 3
+    multi_turn = True
 
     topics = {
         "fa": [
@@ -128,26 +152,3 @@ class SyntheticDatasetConfig:
             "Internet of Things"
         ]
     }
-
-    max_tokens = 768
-    shard_size = 5000
-    checkpoint_interval = 1000
-    max_attempts_multiplier = 5
-    min_user_words = 5
-    max_user_words = 180
-    min_assistant_words = 20
-    max_assistant_words = 600
-    min_quality_score = 72
-    temperature = 0.75
-    top_p = 0.9
-    min_p = 0.05
-    repeat_penalty = 1.08
-    retry_count = 2
-    enable_quality_judge = False
-    judge_model_path = None
-    export_final = True
-    cleanup_shards = False
-
-    min_turns = 2
-    max_turns = 5
-    multi_turn = True

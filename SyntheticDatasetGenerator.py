@@ -22,7 +22,7 @@ class SyntheticDatasetGenerator:
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
                  min_quality_score: int, temperature: float, top_p: float, min_p: float,
                  repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool):
+                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool,remove_shards):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -110,6 +110,7 @@ class SyntheticDatasetGenerator:
         self.question_styles = self.config["question_styles"]
         self.export_final=export_final
         self.cleanup_shards=cleanup_shards
+        self.remove_shards=remove_shards
 
     def _validate_config(self) -> None:
         if not os.path.isfile(self.model_path):
@@ -561,7 +562,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         rate = self.accepted / elapsed * 60
         print(f"تولید {self.accepted}/{self.total_samples} | تلاش {self.attempts} | سرعت {rate:.2f}/دقیقه | JSON نامعتبر {self.stats['json_failed']} | اعتبارسنجی {self.stats['validation_failed']} | زبان {self.stats['language_failed']} | کیفیت {self.stats['quality_failed']} | تکراری {self.stats['duplicate_failed']}", end="\r", flush=True)
 
-    def generate(self) -> List[str]:
+    def _generate(self) -> List[str]:
         self._validate_config()
         if self.llm is None:
             self.load_model()
@@ -608,7 +609,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         print()
         return self._existing_shards()
 
-    def export_final(self) -> str:
+    def _export_final(self) -> str:
         shards = self._existing_shards()
         if not shards:
             raise RuntimeError("No dataset shards found")
@@ -623,7 +624,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         os.replace(temporary, self.output_path)
         return self.output_path
 
-    def cleanup(self, remove_shards: bool = False, remove_checkpoint: bool = False) -> None:
+    def _cleanup(self, remove_shards: bool = False, remove_checkpoint: bool = False) -> None:
         if remove_shards:
             for path in self._existing_shards():
                 if os.path.isfile(path):
@@ -631,7 +632,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         if remove_checkpoint and os.path.isdir(self._checkpoint_dir()):
             shutil.rmtree(self._checkpoint_dir())
 
-    def get_stats(self) -> Dict[str, Any]:
+    def _get_stats(self) -> Dict[str, Any]:
         elapsed = max(0.001, time.time() - self.start_time) if self.start_time else 0.0
         result = dict(self.stats)
         result["elapsed_seconds"] = elapsed
@@ -640,16 +641,16 @@ Return only valid JSON with exactly two messages: user and assistant."""
         return result
 
     def run(self) -> str:
-        self.generate()
+        self._generate()
         if self.export_final:
-            result = self.export_final()
+            result = self._export_final()
             if self.cleanup_shards:
-                self.cleanup(remove_shards=True)
+                self._cleanup(self.remove_shards)
             print(f"Dataset saved: {result}")
             print(f"Samples: {self.accepted}")
-            print(f"Stats: {json.dumps(self.get_stats(), ensure_ascii=False)}")
+            print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
             return result
         print(f"Dataset shards saved in: {self._output_dir()}")
         print(f"Samples: {self.accepted}")
-        print(f"Stats: {json.dumps(self.get_stats(), ensure_ascii=False)}")
+        print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
         return self._output_dir()

@@ -27,3 +27,4 @@ class SyntheticDatasetConfig:
     keep_shards = True
     export_final = True
     cleanup_shards = False
+    remove_shards=True

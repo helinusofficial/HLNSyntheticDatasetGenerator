@@ -30,7 +30,7 @@ if __name__ == "__main__":
         judge_model_path=SyntheticDatasetConfig.judge_model_path,
         keep_shards=SyntheticDatasetConfig.keep_shards,
         export_final=SyntheticDatasetConfig.export_final,
-        cleanup_shards=SyntheticDatasetConfig.cleanup_shards
+        cleanup_shards=SyntheticDatasetConfig.cleanup_shards,
+        remove_shards=SyntheticDatasetConfig.remove_shards
     )
-    generator.run(export_final=True, cleanup_shards=False)
     generator.run()

@@ -9,7 +9,6 @@ import time
 import unicodedata
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set, Tuple
-
 from datasets import Dataset, load_dataset
 from llama_cpp import Llama
 
@@ -22,7 +21,7 @@ class SyntheticDatasetGenerator:
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
                  min_quality_score: int, temperature: float, top_p: float, min_p: float,
                  repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool,remove_shards):
+                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -110,7 +109,6 @@ class SyntheticDatasetGenerator:
         self.question_styles = self.config["question_styles"]
         self.export_final=export_final
         self.cleanup_shards=cleanup_shards
-        self.remove_shards=remove_shards
 
     def _validate_config(self) -> None:
         if not os.path.isfile(self.model_path):
@@ -624,7 +622,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         os.replace(temporary, self.output_path)
         return self.output_path
 
-    def _cleanup(self, remove_shards: bool = False, remove_checkpoint: bool = False) -> None:
+    def _cleanup(self, remove_shards: bool, remove_checkpoint ) -> None:
         if remove_shards:
             for path in self._existing_shards():
                 if os.path.isfile(path):

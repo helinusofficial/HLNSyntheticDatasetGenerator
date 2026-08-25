@@ -31,6 +31,5 @@ if __name__ == "__main__":
         keep_shards=SyntheticDatasetConfig.keep_shards,
         export_final=SyntheticDatasetConfig.export_final,
         cleanup_shards=SyntheticDatasetConfig.cleanup_shards,
-        remove_shards=SyntheticDatasetConfig.remove_shards
     )
     generator.run()

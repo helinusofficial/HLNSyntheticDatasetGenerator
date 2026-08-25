@@ -21,7 +21,7 @@ class SyntheticDatasetGenerator:
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
                  min_quality_score: int, temperature: float, top_p: float, min_p: float,
                  repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str],  export_final: bool, cleanup_shards: bool):
+                 judge_model_path: Optional[str], export_final: bool, cleanup_shards: bool):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -106,8 +106,8 @@ class SyntheticDatasetGenerator:
         self.styles = self.config["styles"]
         self.audiences = self.config["audiences"]
         self.question_styles = self.config["question_styles"]
-        self.export_final=export_final
-        self.cleanup_shards=cleanup_shards
+        self.export_final = export_final
+        self.cleanup_shards = cleanup_shards
 
     def _validate_config(self) -> None:
         if not os.path.isfile(self.model_path):
@@ -139,14 +139,18 @@ class SyntheticDatasetGenerator:
         return f"You are a professional synthetic instruction-tuning dataset generator. Your target language is {self.config['name']}. {self.config['prompt']} Generate realistic, diverse, accurate, useful and natural user-assistant conversations. Avoid artificial prompts, repetitive templates, generic filler, fabricated information, unnecessary verbosity, meta commentary, references to the dataset, references to generation instructions, and statements about being an AI. For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts. Return only valid JSON."
 
     def load_model(self) -> None:
+        print(f"Loading generation model: {self.model_path}")
         self.llm = Llama(model_path=self.model_path, n_ctx=self.n_ctx, n_threads=self.n_threads, n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers, use_mmap=True, use_mlock=False, verbose=False, seed=self.seed)
+        print("Generation model loaded successfully")
 
     def load_judge_model(self) -> None:
         if not self.enable_quality_judge:
             return
         if not os.path.isfile(self.judge_model_path):
             raise FileNotFoundError(f"Judge model not found: {self.judge_model_path}")
+        print(f"Loading judge model: {self.judge_model_path}")
         self.judge_llm = Llama(model_path=self.judge_model_path, n_ctx=self.n_ctx, n_threads=self.n_threads, n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers, use_mmap=True, use_mlock=False, verbose=False, seed=self.seed + 1000000)
+        print("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
         text = unicodedata.normalize("NFKC", text)
@@ -459,39 +463,66 @@ Return only valid JSON with exactly two messages: user and assistant."""
         topic = self.random.choice(self.topics)
         task = self.random.choice(self.tasks)
         style = self.random.choice(self.styles)
-        difficulty = self.random.choice(["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.language == "fa" else ["Beginner", "Intermediate", "Advanced", "Expert"])
+        difficulty = self.random.choice(
+            ["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.language == "fa" else ["Beginner", "Intermediate",
+                                                                                  "Advanced", "Expert"])
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
         prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
+        print(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.retry_count}")
+
         for retry in range(self.retry_count):
             try:
+                print(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
+
                 temperature = min(0.95, max(0.55, self.temperature + self.random.uniform(-0.08, 0.08)))
-                result = self.llm.create_chat_completion(messages=[{"role": "system", "content": self._system_prompt()}, {"role": "user", "content": prompt}], temperature=temperature, top_p=self.top_p, min_p=self.min_p, repeat_penalty=self.repeat_penalty, max_tokens=self.max_tokens, response_format={"type": "json_object"}, seed=self.seed + index * 100 + retry)
+                result = self.llm.create_chat_completion(messages=[{"role": "system", "content": self._system_prompt()},
+                                                                   {"role": "user", "content": prompt}],
+                                                         temperature=temperature, top_p=self.top_p, min_p=self.min_p,
+                                                         repeat_penalty=self.repeat_penalty, max_tokens=self.max_tokens,
+                                                         response_format={"type": "json_object"},
+                                                         seed=self.seed + index * 100 + retry)
                 raw = result["choices"][0]["message"]["content"].strip()
+
                 try:
                     sample = json.loads(raw)
                 except json.JSONDecodeError:
                     self.stats["json_failed"] += 1
+                    print(f"JSON parsing failed: index={index}, retry={retry + 1}")
                     continue
+
                 valid, _ = self._validate_structure(sample)
                 if not valid:
                     self.stats["validation_failed"] += 1
+                    print(f"Structure validation failed: index={index}, retry={retry + 1}")
                     continue
+
                 sample = self._normalize_sample(sample)
                 valid, _ = self._validate_language(sample)
                 if not valid:
                     self.stats["language_failed"] += 1
+                    print(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
+
                 if self._quality_score(sample) < self.min_quality_score:
                     self.stats["quality_failed"] += 1
+                    print(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
+
                 if not self._judge(sample):
                     self.stats["quality_failed"] += 1
+                    print(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
                     continue
+
+                print(f"Sample accepted: index={index}, retry={retry + 1}")
                 return sample
+
             except Exception as exc:
                 self.stats["generation_failed"] += 1
+                print(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
                 self.logger.warning("Generation failure index=%s retry=%s error=%s", index, retry + 1, exc)
+
+        print(f"Sample generation failed after {self.retry_count} retries: index={index}")
         return {}
 
     def _output_dir(self) -> str:
@@ -521,20 +552,26 @@ Return only valid JSON with exactly two messages: user and assistant."""
             return
         path = self._shard_path(index)
         temporary = f"{path}.tmp"
+        print(f"Saving shard {index}: {path}")
         Dataset.from_list(samples).to_parquet(temporary)
         os.replace(temporary, path)
+        print(f"Shard {index} saved successfully: {len(samples)} samples")
 
     def _save_checkpoint(self, next_index: int) -> None:
         state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
         temporary = f"{self._checkpoint_path()}.tmp"
+        print(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
         with open(temporary, "w", encoding="utf-8") as file:
             json.dump(state, file, ensure_ascii=False)
         os.replace(temporary, self._checkpoint_path())
+        print("Checkpoint saved successfully")
 
     def _load_checkpoint(self) -> int:
         path = self._checkpoint_path()
         if not os.path.isfile(path):
+            print("No checkpoint found. Starting from index 0")
             return 0
+        print(f"Loading checkpoint: {path}")
         with open(path, "r", encoding="utf-8") as file:
             state = json.load(file)
         self.accepted = int(state.get("accepted", 0))
@@ -542,10 +579,13 @@ Return only valid JSON with exactly two messages: user and assistant."""
         self.stats.update(state.get("stats", {}))
         self.signatures = set(state.get("signatures", []))
         self.user_signatures = set(state.get("user_signatures", []))
+        print(f"Checkpoint loaded: accepted={self.accepted}, attempts={self.attempts}")
         return int(state.get("next_index", 0))
 
     def _load_existing_dedup_state(self) -> None:
-        for path in self._existing_shards():
+        shards = self._existing_shards()
+        print(f"Loading deduplication state from {len(shards)} existing shard(s)")
+        for path in shards:
             try:
                 dataset = load_dataset("parquet", data_files=path, split="train")
                 for sample in dataset:
@@ -553,14 +593,17 @@ Return only valid JSON with exactly two messages: user and assistant."""
                     self.user_signatures.add(self._user_signature(sample))
             except Exception as exc:
                 self.logger.warning("Failed to load shard %s: %s", path, exc)
+        print(f"Deduplication state loaded: {len(self.signatures)} signatures")
 
     def _progress(self) -> None:
         elapsed = max(0.001, time.time() - self.start_time)
         rate = self.accepted / elapsed * 60
-        print(f"تولید {self.accepted}/{self.total_samples} | تلاش {self.attempts} | سرعت {rate:.2f}/دقیقه | JSON نامعتبر {self.stats['json_failed']} | اعتبارسنجی {self.stats['validation_failed']} | زبان {self.stats['language_failed']} | کیفیت {self.stats['quality_failed']} | تکراری {self.stats['duplicate_failed']}", end="\r", flush=True)
+        print(f"Generated {self.accepted}/{self.total_samples} | Attempts {self.attempts} | Speed {rate:.2f}/min | Invalid JSON {self.stats['json_failed']} | Validation {self.stats['validation_failed']} | Language {self.stats['language_failed']} | Quality {self.stats['quality_failed']} | Duplicates {self.stats['duplicate_failed']}", end="\r", flush=True)
 
     def _generate(self) -> List[str]:
+        print("Starting dataset generation")
         self._validate_config()
+        print("Configuration validated successfully")
         if self.llm is None:
             self.load_model()
         if self.enable_quality_judge and self.judge_llm is None:
@@ -569,47 +612,71 @@ Return only valid JSON with exactly two messages: user and assistant."""
         next_index = self._load_checkpoint()
         self._load_existing_dedup_state()
         shard_index = len(self._existing_shards())
+        print(f"Starting generation from index {next_index}")
+        print(f"Existing shards: {shard_index}")
         buffer = []
         while self.accepted < self.total_samples:
             if self.attempts >= self.max_attempts:
-                raise RuntimeError(f"Maximum attempts reached. accepted={self.accepted}, target={self.total_samples}, attempts={self.attempts}, stats={self.stats}")
+                print(f"Maximum attempts reached: {self.attempts}/{self.max_attempts}")
+                raise RuntimeError(
+                    f"Maximum attempts reached. accepted={self.accepted}, target={self.total_samples}, attempts={self.attempts}, stats={self.stats}")
+
             self.attempts += 1
             self.stats["attempts"] = self.attempts
+            print(f"Generating sample: index={next_index}, attempt={self.attempts}")
+
             sample = self._generate_sample(next_index)
             next_index += 1
+
             if not sample:
+                print(f"Sample generation failed: index={next_index - 1}")
                 if self.attempts % self.checkpoint_interval == 0:
+                    print(f"Saving checkpoint: next_index={next_index}")
                     self._save_checkpoint(next_index)
                 continue
+
             signature = self._signature(sample)
             user_signature = self._user_signature(sample)
+
             if signature in self.signatures or user_signature in self.user_signatures:
                 self.stats["duplicate_failed"] += 1
+                print(f"Duplicate sample rejected: index={next_index - 1}")
                 if self.attempts % self.checkpoint_interval == 0:
+                    print(f"Saving checkpoint: next_index={next_index}")
                     self._save_checkpoint(next_index)
                 continue
+
             self.signatures.add(signature)
             self.user_signatures.add(user_signature)
             buffer.append(sample)
             self.accepted += 1
             self.stats["accepted"] = self.accepted
+            print(f"Sample accepted: {self.accepted}/{self.total_samples}")
+
             if len(buffer) >= self.shard_size:
+                print(f"Saving shard: index={shard_index}, samples={len(buffer)}")
                 self._save_shard(buffer, shard_index)
                 shard_index += 1
                 buffer = []
+
             if self.accepted % self.checkpoint_interval == 0:
+                print(f"Saving checkpoint: next_index={next_index}")
                 self._save_checkpoint(next_index)
+
             self._progress()
         if buffer:
             self._save_shard(buffer, shard_index)
         self._save_checkpoint(next_index)
         print()
+        print(f"Generation completed: {self.accepted} samples accepted")
         return self._existing_shards()
 
     def _export_final(self) -> str:
+        print("Starting final dataset export")
         shards = self._existing_shards()
         if not shards:
             raise RuntimeError("No dataset shards found")
+        print(f"Found {len(shards)} shard(s) for export")
         datasets = [load_dataset("parquet", data_files=path, split="train") for path in shards]
         columns = datasets[0].column_names
         merged = {column: [] for column in columns}
@@ -617,17 +684,23 @@ Return only valid JSON with exactly two messages: user and assistant."""
             for column in columns:
                 merged[column].extend(dataset[column])
         temporary = f"{self.output_path}.tmp"
+        print(f"Writing final dataset: {self.output_path}")
         Dataset.from_dict(merged).to_parquet(temporary)
         os.replace(temporary, self.output_path)
+        print(f"Final dataset exported successfully: {self.output_path}")
         return self.output_path
 
-    def _cleanup(self, remove_shards: bool, remove_checkpoint ) -> None:
+    def _cleanup(self, remove_shards: bool, remove_checkpoint) -> None:
+        print("Starting cleanup")
         if remove_shards:
             for path in self._existing_shards():
                 if os.path.isfile(path):
+                    print(f"Removing shard: {path}")
                     os.remove(path)
         if remove_checkpoint and os.path.isdir(self._checkpoint_dir()):
+            print(f"Removing checkpoint directory: {self._checkpoint_dir()}")
             shutil.rmtree(self._checkpoint_dir())
+        print("Cleanup completed")
 
     def _get_stats(self) -> Dict[str, Any]:
         elapsed = max(0.001, time.time() - self.start_time) if self.start_time else 0.0
@@ -638,12 +711,15 @@ Return only valid JSON with exactly two messages: user and assistant."""
         return result
 
     def run(self) -> str:
+        print("Starting dataset generation pipeline")
         self._generate()
 
         if self.export_final:
+            print("Final export is enabled")
             result = self._export_final()
 
             if self.cleanup_shards:
+                print("Shard cleanup is enabled")
                 self._cleanup(
                     remove_shards=True,
                     remove_checkpoint=True
@@ -652,9 +728,11 @@ Return only valid JSON with exactly two messages: user and assistant."""
             print(f"Dataset saved: {result}")
             print(f"Samples: {self.accepted}")
             print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
+            print("Dataset generation pipeline completed successfully")
             return result
 
         print(f"Dataset shards saved in: {self._output_dir()}")
         print(f"Samples: {self.accepted}")
         print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
+        print("Dataset generation pipeline completed successfully")
         return self._output_dir()

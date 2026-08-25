@@ -21,7 +21,7 @@ class SyntheticDatasetGenerator:
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
                  min_quality_score: int, temperature: float, top_p: float, min_p: float,
                  repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str], keep_shards: bool, export_final: bool, cleanup_shards: bool):
+                 judge_model_path: Optional[str],  export_final: bool, cleanup_shards: bool):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -47,7 +47,6 @@ class SyntheticDatasetGenerator:
         self.retry_count = int(retry_count)
         self.enable_quality_judge = bool(enable_quality_judge)
         self.judge_model_path = judge_model_path
-        self.keep_shards = bool(keep_shards)
         self.random = random.Random(self.seed)
         self.llm = None
         self.judge_llm = None
@@ -640,14 +639,21 @@ Return only valid JSON with exactly two messages: user and assistant."""
 
     def run(self) -> str:
         self._generate()
+
         if self.export_final:
             result = self._export_final()
+
             if self.cleanup_shards:
-                self._cleanup(self.remove_shards)
+                self._cleanup(
+                    remove_shards=True,
+                    remove_checkpoint=True
+                )
+
             print(f"Dataset saved: {result}")
             print(f"Samples: {self.accepted}")
             print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
             return result
+
         print(f"Dataset shards saved in: {self._output_dir()}")
         print(f"Samples: {self.accepted}")
         print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")

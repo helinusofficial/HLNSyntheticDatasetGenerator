@@ -8,16 +8,7 @@ from llama_cpp import Llama
 
 class SyntheticDatasetGenerator:
 
-    def __init__(
-        self,
-        model_path: str,
-        output_path: str,
-        total_samples: int = 10000,
-        n_ctx: int = 4096,
-        n_threads: int = 8,
-        n_batch: int = 512,
-        seed: int = 42
-    ):
+    def __init__(self, model_path: str, output_path: str, total_samples, n_ctx, n_threads, n_batch, seed, language):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = total_samples
@@ -26,65 +17,91 @@ class SyntheticDatasetGenerator:
         self.n_batch = n_batch
         self.seed = seed
         self.random = random.Random(seed)
+        self.language = language
 
         self.topics = [
-            "هوش مصنوعی",
-            "یادگیری ماشین",
-            "یادگیری عمیق",
-            "برنامه نویسی",
-            "پایتون",
-            "نرم افزار",
-            "سخت افزار",
-            "امنیت سایبری",
-            "شبکه و اینترنت",
-            "پایگاه داده",
-            "مهندسی نرم افزار",
-            "علم داده",
-            "آمار",
-            "ریاضیات",
-            "فیزیک",
-            "شیمی",
-            "زیست شناسی",
-            "پزشکی عمومی",
-            "سلامت دیجیتال",
-            "کسب و کار",
-            "مدیریت",
-            "اقتصاد",
-            "بازاریابی",
-            "تولید محتوا",
-            "آموزش",
-            "تاریخ",
-            "جغرافیا",
-            "زبان فارسی",
-            "ترجمه",
-            "خلاصه سازی متن",
-            "تحلیل متن",
-            "حل مسئله",
-            "استدلال",
-            "مقایسه مفاهیم",
-            "پرسش و پاسخ عمومی"
+            "Artificial Intelligence",
+            "Machine Learning",
+            "Deep Learning",
+            "Programming",
+            "Python",
+            "Software",
+            "Hardware",
+            "Cybersecurity",
+            "Networking",
+            "Databases",
+            "Software Engineering",
+            "Data Science",
+            "Statistics",
+            "Mathematics",
+            "Physics",
+            "Chemistry",
+            "Biology",
+            "General Medicine",
+            "Digital Health",
+            "Business",
+            "Management",
+            "Economics",
+            "Marketing",
+            "Content Creation",
+            "Education",
+            "History",
+            "Geography",
+            "Translation",
+            "Text Summarization",
+            "Text Analysis",
+            "Problem Solving",
+            "Reasoning",
+            "Concept Comparison",
+            "General Question Answering"
         ]
 
         self.styles = [
-            "پاسخ کوتاه و دقیق",
-            "پاسخ تشریحی",
-            "پاسخ مرحله به مرحله",
-            "پاسخ آموزشی برای فرد مبتدی",
-            "پاسخ تخصصی برای فرد حرفه ای",
-            "پاسخ همراه با مثال",
-            "پاسخ همراه با مقایسه",
-            "پاسخ تحلیلی",
-            "پاسخ کاربردی",
-            "پاسخ ساده و قابل فهم"
+            "Short and precise answer",
+            "Detailed explanatory answer",
+            "Step-by-step answer",
+            "Educational answer for a beginner",
+            "Technical answer for an experienced user",
+            "Answer with examples",
+            "Comparative answer",
+            "Analytical answer",
+            "Practical answer",
+            "Simple and easy-to-understand answer"
         ]
 
         self.llm = None
 
+    def _get_language_name(self) -> str:
+        languages = {
+            "fa": "Persian",
+            "en": "English",
+            "de": "German",
+            "ar": "Arabic",
+            "tr": "Turkish"
+        }
+
+        if self.language not in languages:
+            raise ValueError(f"Unsupported language: {self.language}")
+
+        return languages[self.language]
+
+    def _system_prompt(self) -> str:
+        language = self._get_language_name()
+
+        return (
+            f"You are a synthetic dataset generator for training and fine-tuning "
+            f"large language models. All generated content must be written in {language}. "
+            f"The data must be natural, diverse, accurate, and high quality. "
+            f"The user's question must be realistic and meaningful, and the assistant's "
+            f"answer must be accurate, useful, and directly relevant to the question. "
+            f"Avoid repetitive sentences, generic answers, fabricated information, "
+            f"unnatural text, and unnecessary verbosity. Vary the length and structure "
+            f"of questions and answers. Do not output anything outside the JSON."
+        )
+
     def load_model(self):
         if not os.path.isfile(self.model_path):
-            raise FileNotFoundError(
-                f"Model file not found: {self.model_path}"
-            )
+            raise FileNotFoundError(f"Model file not found: {self.model_path}")
 
         self.llm = Llama(
             model_path=self.model_path,
@@ -97,31 +114,24 @@ class SyntheticDatasetGenerator:
             verbose=False
         )
 
-    def _system_prompt(self) -> str:
-        return (
-            "تو یک تولیدکننده دیتاست مصنوعی برای آموزش و Fine-Tuning "
-            "مدل‌های زبانی هستی. داده باید کاملاً فارسی، طبیعی، متنوع، "
-            "دقیق و باکیفیت باشد. سوال کاربر باید واقعی و معنادار باشد "
-            "و پاسخ دستیار باید دقیق، مفید و مرتبط با سوال باشد. "
-            "از جملات کلیشه‌ای، تکرار، پاسخ‌های بی‌محتوا، اطلاعات ساختگی "
-            "و متن غیرطبیعی خودداری کن. طول سوال و پاسخ را متنوع کن. "
-            "هیچ توضیحی خارج از JSON تولید نکن."
-        )
-
     def _build_prompt(self, topic: str, style: str, index: int) -> str:
+        language = self._get_language_name()
+
         return f"""
-یک نمونه آموزشی فارسی باکیفیت تولید کن.
+Generate one high-quality synthetic instruction-tuning example in {language}.
 
-موضوع: {topic}
-سبک پاسخ: {style}
-شناسه تنوع: {index}
+Topic: {topic}
+Response style: {style}
+Variation ID: {index}
 
-نمونه باید یک مکالمه واقعی بین کاربر و دستیار باشد.
-سوال و پاسخ نباید کلیشه‌ای یا تکراری باشند.
-پاسخ دستیار باید اطلاعات مفید ارائه کند.
-از تکرار ساختار نمونه‌های قبلی خودداری کن.
+The example must be a natural conversation between a user and an assistant.
+The user's question must be realistic and meaningful.
+The assistant's answer must provide useful and accurate information.
+Do not create repetitive or templated conversations.
+Avoid repeating structures from previous examples.
+Vary the length and structure of questions and answers.
 
-خروجی فقط JSON معتبر و دقیقاً با ساختار زیر باشد:
+Output only valid JSON with exactly this structure:
 
 {{
   "messages": [
@@ -184,59 +194,36 @@ class SyntheticDatasetGenerator:
         messages = []
 
         for message in sample["messages"]:
-            messages.append(
-                {
-                    "role": str(message["role"]).strip().lower(),
-                    "content": str(message["content"]).strip()
-                }
-            )
+            messages.append({
+                "role": str(message["role"]).strip().lower(),
+                "content": str(message["content"]).strip()
+            })
 
         return {"messages": messages}
 
     def _signature(self, sample: Dict[str, Any]) -> str:
-        return json.dumps(
-            sample["messages"],
-            ensure_ascii=False,
-            sort_keys=True
-        ).strip().lower()
+        return json.dumps(sample["messages"], ensure_ascii=False, sort_keys=True).strip().lower()
 
     def _generate_sample(self, index: int) -> Dict[str, Any]:
         topic = self.random.choice(self.topics)
         style = self.random.choice(self.styles)
 
-        prompt = self._build_prompt(
-            topic=topic,
-            style=style,
-            index=index
-        )
+        prompt = self._build_prompt(topic=topic, style=style, index=index)
 
         for _ in range(5):
             try:
                 result = self.llm.create_chat_completion(
                     messages=[
-                        {
-                            "role": "system",
-                            "content": self._system_prompt()
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
+                        {"role": "system", "content": self._system_prompt()},
+                        {"role": "user", "content": prompt}
                     ],
                     temperature=0.8,
                     top_p=0.9,
                     max_tokens=1400,
-                    response_format={
-                        "type": "json_object"
-                    }
+                    response_format={"type": "json_object"}
                 )
 
-                content = (
-                    result["choices"][0]
-                    ["message"]["content"]
-                    .strip()
-                )
-
+                content = result["choices"][0]["message"]["content"].strip()
                 sample = json.loads(content)
 
                 if self._validate(sample):
@@ -253,7 +240,6 @@ class SyntheticDatasetGenerator:
 
         samples: List[Dict[str, Any]] = []
         signatures: Set[str] = set()
-
         index = 0
 
         while len(samples) < self.total_samples:
@@ -271,11 +257,7 @@ class SyntheticDatasetGenerator:
             signatures.add(signature)
             samples.append(sample)
 
-            print(
-                f"Generated {len(samples)}/{self.total_samples}",
-                end="\r",
-                flush=True
-            )
+            print(f"Generated {len(samples)}/{self.total_samples}", end="\r", flush=True)
 
         return Dataset.from_list(samples)
 
@@ -295,7 +277,3 @@ class SyntheticDatasetGenerator:
         print(f"Dataset saved: {self.output_path}")
         print(f"Samples: {len(dataset)}")
         print(f"Columns: {dataset.column_names}")
-
-
-
-

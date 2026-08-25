@@ -3,13 +3,14 @@ from SyntheticDatasetGenerator import SyntheticDatasetGenerator
 
 if __name__ == "__main__":
     generator = SyntheticDatasetGenerator(
-        model_path=SyntheticDatasetConfig.MODEL_PATH,
-        output_path=SyntheticDatasetConfig.OUTPUT_PATH,
-        total_samples=SyntheticDatasetConfig.TOTAL_SAMPLES,
-        n_ctx=SyntheticDatasetConfig.N_CTX,
-        n_threads=SyntheticDatasetConfig.N_THREADS,
-        n_batch=SyntheticDatasetConfig.N_BATCH,
-        seed=SyntheticDatasetConfig.SEED
+        model_path=SyntheticDatasetConfig.model_path,
+        output_path=SyntheticDatasetConfig.output_path,
+        total_samples=SyntheticDatasetConfig.total_samples,
+        n_ctx=SyntheticDatasetConfig.n_ctx,
+        n_threads=SyntheticDatasetConfig.n_threads,
+        n_batch=SyntheticDatasetConfig.n_batch,
+        seed=SyntheticDatasetConfig.seed,
+        language=SyntheticDatasetConfig.language
     )
 
     generator.run()

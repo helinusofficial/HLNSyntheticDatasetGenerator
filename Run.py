@@ -30,5 +30,12 @@ if __name__ == "__main__":
         judge_model_path=SyntheticDatasetConfig.judge_model_path,
         export_final=SyntheticDatasetConfig.export_final,
         cleanup_shards=SyntheticDatasetConfig.cleanup_shards,
+
+        multi_turn=SyntheticDatasetConfig.multi_turn,
+        min_turns=SyntheticDatasetConfig.min_turns,
+        max_turns=SyntheticDatasetConfig.max_turns,
+
+        topics=SyntheticDatasetConfig.topics[SyntheticDatasetConfig.language],
     )
+
     generator.run()

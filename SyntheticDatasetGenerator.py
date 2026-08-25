@@ -4,7 +4,6 @@ import logging
 import os
 import random
 import re
-import shutil
 import time
 import unicodedata
 from collections import Counter
@@ -21,7 +20,9 @@ class SyntheticDatasetGenerator:
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
                  min_quality_score: int, temperature: float, top_p: float, min_p: float,
                  repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str], export_final: bool, cleanup_shards: bool):
+                 judge_model_path: Optional[str], export_final: bool, cleanup_shards: bool,
+                 multi_turn: bool, min_turns: int, max_turns: int,
+                 topics: List[str]):
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -64,7 +65,6 @@ class SyntheticDatasetGenerator:
                 "native": "فارسی",
                 "script_min": 0.58,
                 "prompt": "تمام محتوای سؤال کاربر و پاسخ دستیار باید به فارسی طبیعی، روان، حرفه‌ای و بومی نوشته شود. ساختار جمله‌ها باید شبیه نوشته و گفتار طبیعی یک فارسی‌زبان باشد و نباید ترجمه تحت‌اللفظی از انگلیسی به فارسی باشد. از نیم‌فاصله فارسی در ترکیبات مناسب مانند «می‌شود»، «می‌کند»، «نرم‌افزارها»، «داده‌ها»، «بهینه‌سازی» و موارد مشابه استفاده کن. از حروف فارسی «ی» و «ک» استفاده کن و از حروف عربی «ي» و «ك» استفاده نکن. از علائم نگارشی فارسی مانند «،»، «؛»، «؟» و «»» در جای مناسب استفاده کن. واژه‌های انگلیسی فقط در مواردی مانند نام فناوری، نام محصول، کد، نام زبان برنامه‌نویسی، مخفف، استاندارد یا اصطلاح تخصصی رایج مجاز هستند.",
-                "topics": ["هوش مصنوعی", "یادگیری ماشین", "یادگیری عمیق", "پردازش زبان طبیعی", "بینایی ماشین", "مدل‌های زبانی بزرگ", "هوش مصنوعی مولد", "مهندسی پرامپت", "برنامه‌نویسی", "پایتون", "توسعه نرم‌افزار", "مهندسی نرم‌افزار", "الگوریتم‌ها و ساختمان داده", "پایگاه داده", "رایانش ابری", "دوآپس", "سیستم‌عامل", "شبکه‌های کامپیوتری", "امنیت سایبری", "توسعه وب", "توسعه اپلیکیشن موبایل", "علم داده", "تحلیل داده", "آمار", "ریاضیات", "فیزیک", "شیمی", "زیست‌شناسی", "پزشکی عمومی", "سلامت دیجیتال", "فناوری سلامت", "کسب‌وکار", "مدیریت", "اقتصاد", "بازاریابی", "آموزش", "تاریخ", "جغرافیا", "ترجمه", "خلاصه‌سازی متن", "تحلیل متن", "نگارش", "استدلال", "حل مسئله", "تصمیم‌گیری", "مقایسه مفاهیم", "پرسش و پاسخ عمومی", "توسعه فردی", "کارآفرینی", "مدیریت پروژه", "تجربه کاربری", "طراحی محصول", "سئو", "تولید محتوا"],
                 "tasks": ["پرسش و پاسخ", "توضیح مفهوم", "مقایسه", "حل مسئله", "استدلال", "خلاصه‌سازی", "دسته‌بندی", "ترجمه", "بازنویسی", "عیب‌یابی", "آموزش مرحله‌به‌مرحله", "تصمیم‌گیری", "تحلیل مفهوم", "ارائه مثال", "راهنمای عملی", "تحلیل علت و معلول", "بررسی مزایا و معایب", "تحلیل سناریو", "تحلیل خطا", "ارائه پیشنهاد", "ارزیابی", "تفسیر", "طراحی راهکار", "برنامه‌ریزی"],
                 "styles": ["کوتاه و دقیق", "توضیحی و کامل", "مرحله‌به‌مرحله", "آموزشی برای مبتدی", "فنی و تخصصی", "عملی", "تحلیلی", "مقایسه‌ای", "عیب‌یابی", "مبتنی بر سناریو", "مبتنی بر استدلال", "مبتنی بر مثال", "مختصر اما کامل", "ساده و قابل فهم", "پیشرفته و تخصصی"],
                 "audiences": ["کاربر عمومی", "مبتدی", "دانش‌آموز", "دانشجو", "برنامه‌نویس", "مهندس", "پژوهشگر", "مدیر", "کارشناس کسب‌وکار", "متخصص فنی", "کاربر حرفه‌ای"],
@@ -76,24 +76,11 @@ class SyntheticDatasetGenerator:
                 "native": "English",
                 "script_min": 0.65,
                 "prompt": "All user and assistant content must be written in natural, fluent, idiomatic English. Avoid literal translations, unnatural phrasing and repetitive templates.",
-                "topics": ["Artificial Intelligence", "Machine Learning", "Deep Learning", "Natural Language Processing", "Computer Vision", "Large Language Models", "Generative AI", "Prompt Engineering", "Programming", "Python", "Software Development", "Software Engineering", "Databases", "Cloud Computing", "Cybersecurity", "Data Science", "Statistics", "Mathematics", "Medicine", "Digital Health", "Business", "Management", "Economics", "Marketing", "Education", "History", "Geography", "Writing", "Reasoning", "Problem Solving", "Decision Making", "General Question Answering"],
                 "tasks": ["Question answering", "Explanation", "Comparison", "Problem solving", "Reasoning", "Summarization", "Classification", "Translation", "Rewriting", "Troubleshooting", "Step-by-step instruction", "Decision making", "Concept analysis", "Example generation", "Practical guidance", "Cause and effect analysis", "Advantages and disadvantages", "Scenario analysis", "Error analysis", "Evaluation"],
                 "styles": ["Short and precise", "Detailed explanatory", "Step-by-step", "Educational", "Technical", "Practical", "Analytical", "Comparative", "Troubleshooting", "Scenario-based", "Reasoning-focused", "Example-driven", "Concise but complete", "Beginner-friendly", "Expert-level"],
                 "audiences": ["General user", "Beginner", "Student", "Developer", "Engineer", "Researcher", "Manager", "Business professional", "Technical professional", "Experienced practitioner"],
                 "question_styles": ["Direct question", "Scenario-based question", "Problem-based question", "How-to question", "Why question", "What-if question", "Comparison question", "Troubleshooting question", "Conceptual question", "Practical request", "Multi-part question", "Decision-oriented question"],
                 "bad_patterns": ["as an ai", "as an ai language model", "i hope this helps", "if you have any further questions", "i cannot browse the internet"]
-            },
-            "de": {
-                "name": "German",
-                "native": "Deutsch",
-                "script_min": 0.65,
-                "prompt": "Alle Benutzer- und Assistententexte müssen in natürlichem, idiomatischem Deutsch verfasst sein. Vermeide wörtliche Übersetzungen, unnatürliche Formulierungen und wiederholte Antwortmuster.",
-                "topics": ["Künstliche Intelligenz", "Maschinelles Lernen", "Deep Learning", "Programmierung", "Python", "Softwareentwicklung", "Softwaretechnik", "Datenbanken", "Cybersicherheit", "Data Science", "Statistik", "Mathematik", "Medizin", "Digitale Gesundheit", "Wirtschaft", "Management", "Marketing", "Bildung", "Geschichte", "Geografie", "Textanalyse", "Zusammenfassung", "Problemlösung", "Logisches Denken", "Entscheidungsfindung"],
-                "tasks": ["Frage und Antwort", "Erklärung", "Vergleich", "Problemlösung", "Schlussfolgerung", "Zusammenfassung", "Klassifikation", "Übersetzung", "Umschreibung", "Fehlerbehebung", "Schritt-für-Schritt-Anleitung", "Entscheidungshilfe", "Konzeptanalyse", "Beispielerstellung", "Praktische Anleitung"],
-                "styles": ["Kurz und präzise", "Ausführlich erklärend", "Schritt für Schritt", "Lehrreich", "Technisch", "Praktisch", "Analytisch", "Vergleichend", "Fehlerbehebung", "Szenariobasiert", "Beispielorientiert", "Einfach verständlich", "Expertenniveau"],
-                "audiences": ["Allgemeiner Nutzer", "Anfänger", "Student", "Entwickler", "Ingenieur", "Forscher", "Manager", "Geschäftskunde", "Technischer Fachmann"],
-                "question_styles": ["Direkte Frage", "Szenariobasierte Frage", "Problembasierte Frage", "Wie-Frage", "Warum-Frage", "Was-wäre-wenn-Frage", "Vergleichsfrage", "Fehlerbehebungsfrage", "Konzeptionelle Frage", "Praktische Anfrage", "Mehrteilige Frage"],
-                "bad_patterns": ["als ki", "als künstliche intelligenz", "ich hoffe, das hilft", "wenn sie weitere fragen haben"]
             }
         }
 
@@ -101,13 +88,22 @@ class SyntheticDatasetGenerator:
             raise ValueError(f"Unsupported language: {self.language}")
 
         self.config = self.language_configs[self.language]
-        self.topics = self.config["topics"]
+        self.topics = topics
         self.tasks = self.config["tasks"]
         self.styles = self.config["styles"]
         self.audiences = self.config["audiences"]
         self.question_styles = self.config["question_styles"]
         self.export_final = export_final
         self.cleanup_shards = cleanup_shards
+
+        self.multi_turn = bool(multi_turn)
+        self.min_turns = int(min_turns)
+        self.max_turns = int(max_turns)
+
+        if not isinstance(self.topics, list) or not self.topics:
+            raise ValueError("Topics configuration must be a non-empty list")
+
+        self.topics = [str(topic).strip() for topic in self.topics if str(topic).strip()]
 
     def _validate_config(self) -> None:
         if not os.path.isfile(self.model_path):
@@ -134,6 +130,15 @@ class SyntheticDatasetGenerator:
             raise ValueError("Invalid assistant word limits")
         if self.enable_quality_judge and not self.judge_model_path:
             raise ValueError("judge_model_path is required when enable_quality_judge=True")
+        if self.multi_turn:
+            if self.min_turns <= 1:
+                raise ValueError("multi_turn requires min_turns > 1")
+
+            if self.max_turns < self.min_turns:
+                raise ValueError("max_turns must be greater than or equal to min_turns")
+        else:
+            self.min_turns = 1
+            self.max_turns = 1
 
     def _system_prompt(self) -> str:
         return f"You are a professional synthetic instruction-tuning dataset generator. Your target language is {self.config['name']}. {self.config['prompt']} Generate realistic, diverse, accurate, useful and natural user-assistant conversations. Avoid artificial prompts, repetitive templates, generic filler, fabricated information, unnecessary verbosity, meta commentary, references to the dataset, references to generation instructions, and statements about being an AI. For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts. Return only valid JSON."
@@ -278,161 +283,334 @@ class SyntheticDatasetGenerator:
             score -= 0.08
         return max(0.0, min(1.0, score))
 
-    def _build_prompt(self, topic: str, task: str, style: str, difficulty: str, audience: str, question_style: str, index: int) -> str:
+    def _build_prompt(self, topic: str, task: str, style: str, difficulty: str,
+                      audience: str, question_style: str, index: int) -> str:
+
+        if self.multi_turn:
+            intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
+            intro_en = "Generate a high-quality multi-turn instruction-tuning example."
+
+            turn_instruction_fa = f"""
+    یک گفت‌وگوی چندمرحله‌ای تولید کن.
+
+    تعداد نوبت‌های گفت‌وگو باید بین {self.min_turns} و {self.max_turns} نوبت باشد.
+    هر نوبت شامل یک پیام user و یک پیام assistant است.
+
+    گفت‌وگو باید پیوستگی معنایی داشته باشد.
+    هر پیام user بعدی باید بر اساس پاسخ قبلی یا context مکالمه شکل بگیرد.
+    کاربر نباید بدون ارتباط موضوع را تغییر دهد.
+    در برخی نوبت‌ها می‌توان از ارجاع‌های طبیعی مانند «این مورد»، «همین راهکار»، «اگر این‌طور باشد» و موارد مشابه استفاده کرد.
+    دستیار باید تمام context قبلی مکالمه را در نظر بگیرد.
+    از تکرار سؤال یا پاسخ قبلی خودداری کن.
+    مکالمه باید شبیه یک گفت‌وگوی واقعی و طبیعی باشد.
+    """
+
+            turn_instruction_en = f"""
+    Generate a multi-turn conversation.
+
+    The conversation must contain between {self.min_turns} and {self.max_turns} turns.
+    Each turn consists of one user message followed by one assistant message.
+
+    The conversation must maintain semantic continuity.
+    Each following user message should naturally build on previous answers or conversation context.
+    Do not abruptly switch to unrelated topics.
+    Some user messages may naturally refer to previous context.
+    The assistant must consider the full conversation history when responding.
+    Avoid repeating previous questions or answers.
+    The conversation must feel realistic and natural.
+    """
+
+        else:
+            intro_fa = "یک نمونه تک‌مرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
+            intro_en = "Generate a high-quality single-turn instruction-tuning example."
+
+            turn_instruction_fa = """
+    فقط یک نوبت سؤال و پاسخ تولید کن.
+
+    خروجی باید دقیقاً شامل یک پیام user و یک پیام assistant باشد.
+    """
+
+            turn_instruction_en = """
+    Generate exactly one user message followed by one assistant message.
+
+    The output must contain exactly two messages.
+    """
+
         if self.language == "fa":
-            return f"""یک نمونه باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن.
+            return f"""{intro_fa}
 
-زبان هدف: فارسی
-موضوع: {topic}
-نوع کار: {task}
-سطح دشواری: {difficulty}
-مخاطب: {audience}
-سبک پاسخ: {style}
-نوع سؤال: {question_style}
-شناسه تنوع: {index}
+    زبان هدف: فارسی
+    موضوع: {topic}
+    نوع کار: {task}
+    سطح دشواری: {difficulty}
+    مخاطب: {audience}
+    سبک پاسخ: {style}
+    نوع سؤال: {question_style}
+    شناسه تنوع: {index}
 
-سؤال کاربر باید کاملاً طبیعی و شبیه سؤالی باشد که یک فارسی‌زبان واقعی در یک موقعیت واقعی می‌پرسد.
-پاسخ دستیار باید دقیق، مفید، مرتبط، روان و متناسب با سؤال باشد.
-از ترجمه تحت‌اللفظی از انگلیسی خودداری کن.
-از ساختارهای تکراری و کلیشه‌ای استفاده نکن.
-پاسخ‌ها را با عباراتی مانند «حتماً»، «البته»، «به طور کلی»، «امیدوارم این پاسخ مفید باشد» یا عبارت‌های مشابه به شکل تکراری شروع یا تمام نکن.
-در متن فارسی از «ی» و «ک» فارسی استفاده کن.
-از نیم‌فاصله در موارد مناسب مانند «می‌شود»، «می‌کند»، «داده‌ها»، «نرم‌افزارها»، «بهینه‌سازی» و موارد مشابه استفاده کن.
-از علائم «،»، «؛»، «؟» و «»» به شکل طبیعی استفاده کن.
-واژه‌های انگلیسی فقط زمانی استفاده شوند که اصطلاح تخصصی، نام فناوری، نام محصول، کد، زبان برنامه‌نویسی یا نام خاص باشند.
-برای موضوعات پزشکی فقط اطلاعات عمومی و آموزشی ارائه کن و تشخیص، نسخه یا تصمیم درمانی شخصی ارائه نکن.
-برای مسائل استدلالی، نتیجه و منطق لازم برای درک پاسخ را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
-خروجی فقط JSON معتبر باشد.
+    {turn_instruction_fa}
 
-ساختار دقیق خروجی:
-{{
-  "messages": [
+    سؤال‌ها باید کاملاً طبیعی و شبیه سؤال‌هایی باشند که یک فارسی‌زبان واقعی می‌پرسد.
+    پاسخ‌های دستیار باید دقیق، مفید، مرتبط، روان و متناسب با context مکالمه باشند.
+
+    از ترجمه تحت‌اللفظی انگلیسی خودداری کن.
+    از ساختارهای تکراری و کلیشه‌ای استفاده نکن.
+    پاسخ‌ها را با عبارت‌هایی مانند «حتماً»، «البته»، «امیدوارم این پاسخ مفید باشد» به شکل تکراری شروع یا تمام نکن.
+
+    در متن فارسی:
+    - از «ی» و «ک» فارسی استفاده کن.
+    - از نیم‌فاصله در موارد مناسب مانند «می‌شود»، «می‌کند»، «داده‌ها»، «نرم‌افزارها» و «بهینه‌سازی» استفاده کن.
+    - از علائم نگارشی فارسی مانند «،»، «؛» و «؟» طبیعی استفاده کن.
+
+    واژه‌های انگلیسی فقط برای اصطلاح تخصصی، نام فناوری، نام محصول، کد، زبان برنامه‌نویسی یا نام خاص مجاز هستند.
+
+    برای موضوعات پزشکی فقط اطلاعات عمومی و آموزشی ارائه کن و تشخیص، نسخه یا تصمیم درمانی شخصی ارائه نکن.
+
+    برای مسائل استدلالی، نتیجه و توضیح لازم برای درک پاسخ را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
+
+    خروجی فقط JSON معتبر باشد.
+
+    ساختار خروجی:
     {{
-      "role": "user",
-      "content": "..."
-    }},
-    {{
-      "role": "assistant",
-      "content": "..."
+      "messages": [
+        {{
+          "role": "user",
+          "content": "..."
+        }},
+        {{
+          "role": "assistant",
+          "content": "..."
+        }}
+      ]
     }}
-  ]
-}}"""
-        return f"""Generate exactly one high-quality instruction-tuning example.
 
-Target language: {self.config['name']}
-Topic: {topic}
-Task type: {task}
-Difficulty: {difficulty}
-Audience: {audience}
-Response style: {style}
-Question style: {question_style}
-Variation ID: {index}
+    {"در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..." if self.multi_turn else "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant."}
+    """
 
-The user request must be realistic and natural.
-The assistant response must be accurate, useful, relevant and complete.
-Avoid repetitive structures, generic filler, artificial benchmark prompts and meta commentary.
-Return only valid JSON with exactly two messages: user and assistant."""
+        return f"""{intro_en}
+
+    Target language: {self.config['name']}
+    Topic: {topic}
+    Task type: {task}
+    Difficulty: {difficulty}
+    Audience: {audience}
+    Response style: {style}
+    Question style: {question_style}
+    Variation ID: {index}
+
+    {turn_instruction_en}
+
+    The user messages must be realistic and natural.
+    The assistant responses must be accurate, useful, relevant and complete.
+
+    Avoid repetitive structures, generic filler, artificial benchmark prompts and meta commentary.
+
+    Return only valid JSON.
+
+    Expected structure:
+    {{
+      "messages": [
+        {{
+          "role": "user",
+          "content": "..."
+        }},
+        {{
+          "role": "assistant",
+          "content": "..."
+        }}
+      ]
+    }}
+
+    {"For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..." if self.multi_turn else "For single-turn mode, return exactly two messages: user → assistant."}
+    """
 
     def _validate_structure(self, sample: Any) -> Tuple[bool, str]:
         if not isinstance(sample, dict):
             return False, "not_object"
+
         messages = sample.get("messages")
-        if not isinstance(messages, list) or len(messages) != 2:
-            return False, "invalid_message_count"
-        if not isinstance(messages[0], dict) or not isinstance(messages[1], dict):
-            return False, "invalid_message_objects"
-        if messages[0].get("role") != "user" or messages[1].get("role") != "assistant":
-            return False, "invalid_roles"
-        if set(messages[0].keys()) != {"role", "content"} or set(messages[1].keys()) != {"role", "content"}:
-            return False, "invalid_keys"
-        user = messages[0].get("content")
-        assistant = messages[1].get("content")
-        if not isinstance(user, str) or not isinstance(assistant, str):
-            return False, "invalid_content_type"
-        if not user.strip() or not assistant.strip():
-            return False, "empty_content"
-        if self._word_count(user) < self.min_user_words:
+
+        if not isinstance(messages, list):
+            return False, "invalid_messages"
+
+        if self.multi_turn:
+            turns = len(messages) // 2
+
+            if turns < self.min_turns or turns > self.max_turns:
+                return False, "invalid_multi_turn_turn_count"
+        else:
+            if len(messages) != 2:
+                return False, "invalid_message_count"
+
+        for i, message in enumerate(messages):
+            if not isinstance(message, dict):
+                return False, "invalid_message_objects"
+
+            if set(message.keys()) != {"role", "content"}:
+                return False, "invalid_keys"
+
+            if not isinstance(message.get("content"), str):
+                return False, "invalid_content_type"
+
+            if not message["content"].strip():
+                return False, "empty_content"
+
+            expected_role = "user" if i % 2 == 0 else "assistant"
+
+            if message.get("role") != expected_role:
+                return False, "invalid_roles"
+
+        user_messages = messages[0::2]
+        assistant_messages = messages[1::2]
+
+        total_user_words = sum(
+            self._word_count(message["content"])
+            for message in user_messages
+        )
+
+        total_assistant_words = sum(
+            self._word_count(message["content"])
+            for message in assistant_messages
+        )
+
+        if total_user_words < self.min_user_words:
             return False, "user_too_short"
-        if self._word_count(user) > self.max_user_words:
+
+        if total_user_words > self.max_user_words:
             return False, "user_too_long"
-        if self._word_count(assistant) < self.min_assistant_words:
+
+        if total_assistant_words < self.min_assistant_words:
             return False, "assistant_too_short"
-        if self._word_count(assistant) > self.max_assistant_words:
+
+        if total_assistant_words > self.max_assistant_words:
             return False, "assistant_too_long"
-        if self._normalize_text(user) == self._normalize_text(assistant):
-            return False, "identical_messages"
+
         return True, "ok"
 
     def _validate_language(self, sample: Dict[str, Any]) -> Tuple[bool, str]:
-        user = sample["messages"][0]["content"]
-        assistant = sample["messages"][1]["content"]
-        if self.language == "fa":
-            if self._persian_letter_ratio(user) < 0.58:
-                return False, "user_not_persian"
-            if self._persian_letter_ratio(assistant) < 0.58:
-                return False, "assistant_not_persian"
-            if self._arabic_character_ratio(user) > 0.03:
-                return False, "user_arabic_characters"
-            if self._arabic_character_ratio(assistant) > 0.03:
-                return False, "assistant_arabic_characters"
-            if self._has_excessive_latin(user):
-                return False, "user_excessive_latin"
-            if self._has_excessive_latin(assistant):
-                return False, "assistant_excessive_latin"
-            if self._has_invalid_persian_characters(user) or self._has_invalid_persian_characters(assistant):
-                return False, "invalid_persian_characters"
+        messages = sample["messages"]
+
+        for i, message in enumerate(messages):
+            text = message["content"]
+
+            if self.language == "fa":
+                if self._persian_letter_ratio(text) < 0.58:
+                    return False, f"message_{i}_not_persian"
+
+                if self._arabic_character_ratio(text) > 0.03:
+                    return False, f"message_{i}_arabic_characters"
+
+                if self._has_excessive_latin(text):
+                    return False, f"message_{i}_excessive_latin"
+
+                if self._has_invalid_persian_characters(text):
+                    return False, f"message_{i}_invalid_persian_characters"
+
         return True, "ok"
 
     def _quality_score(self, sample: Dict[str, Any]) -> int:
-        user = sample["messages"][0]["content"]
-        assistant = sample["messages"][1]["content"]
+        messages = sample["messages"]
+
         score = 100
-        assistant_words = self._word_count(assistant)
-        unique_ratio = len(set(self._words(assistant))) / max(1, assistant_words)
-        if self._repetition_ratio(assistant) > 0.22:
+
+        user_messages = [
+            message["content"]
+            for message in messages
+            if message["role"] == "user"
+        ]
+
+        assistant_messages = [
+            message["content"]
+            for message in messages
+            if message["role"] == "assistant"
+        ]
+
+        all_assistant_text = "\n".join(assistant_messages)
+        all_user_text = "\n".join(user_messages)
+
+        assistant_words = self._word_count(all_assistant_text)
+        user_words = self._word_count(all_user_text)
+
+        unique_ratio = len(set(self._words(all_assistant_text))) / max(1, assistant_words)
+
+        if self._repetition_ratio(all_assistant_text) > 0.22:
             score -= 15
-        if self._sentence_repetition_ratio(assistant) > 0.15:
+
+        if self._sentence_repetition_ratio(all_assistant_text) > 0.15:
             score -= 15
+
         if unique_ratio < 0.42:
             score -= 12
-        if self._contains_bad_pattern(assistant):
+
+        if self._contains_bad_pattern(all_assistant_text):
             score -= 30
-        if self._has_bad_punctuation(assistant):
+
+        if self._has_bad_punctuation(all_assistant_text):
             score -= 8
+
         if self.language == "fa":
-            if self._language_quality(user) < 0.72:
+            if self._language_quality(all_user_text) < 0.72:
                 score -= 10
-            if self._language_quality(assistant) < 0.72:
+
+            if self._language_quality(all_assistant_text) < 0.72:
                 score -= 10
-            if assistant_words > 60 and self._persian_spacing_score(assistant) < 0.25:
+
+            if assistant_words > 60 and self._persian_spacing_score(all_assistant_text) < 0.25:
                 score -= 3
-        if self._word_count(user) < 8:
+
+        if user_words < 8:
             score -= 5
+
         if assistant_words < 30:
             score -= 8
-        if assistant_words > 750:
+
+        if assistant_words > 750 * max(1, len(assistant_messages)):
             score -= 5
+
         return max(0, min(100, score))
 
     def _normalize_sample(self, sample: Dict[str, Any]) -> Dict[str, Any]:
-        user = sample["messages"][0]["content"].strip()
-        assistant = sample["messages"][1]["content"].strip()
-        if self.language == "fa":
-            user = self._normalize_persian_text(user)
-            assistant = self._normalize_persian_text(assistant)
-        else:
-            user = unicodedata.normalize("NFKC", user)
-            assistant = unicodedata.normalize("NFKC", assistant)
-        return {"messages": [{"role": "user", "content": user}, {"role": "assistant", "content": assistant}]}
+        normalized_messages = []
+
+        for message in sample["messages"]:
+            content = message["content"].strip()
+
+            if self.language == "fa":
+                content = self._normalize_persian_text(content)
+            else:
+                content = unicodedata.normalize("NFKC", content)
+
+            normalized_messages.append({
+                "role": message["role"],
+                "content": content
+            })
+
+        return {
+            "messages": normalized_messages
+        }
 
     def _signature(self, sample: Dict[str, Any]) -> str:
-        user = self._normalize_text(sample["messages"][0]["content"])
-        assistant = self._normalize_text(sample["messages"][1]["content"])
-        return hashlib.sha256(f"{user}\n{assistant}".encode("utf-8")).hexdigest()
+        parts = []
+
+        for message in sample["messages"]:
+            parts.append(
+                f"{message['role']}:{self._normalize_text(message['content'])}"
+            )
+
+        return hashlib.sha256(
+            "\n".join(parts).encode("utf-8")
+        ).hexdigest()
 
     def _user_signature(self, sample: Dict[str, Any]) -> str:
-        user = self._normalize_text(sample["messages"][0]["content"])
-        return hashlib.sha256(user.encode("utf-8")).hexdigest()
+        user_messages = [
+            self._normalize_text(message["content"])
+            for message in sample["messages"]
+            if message["role"] == "user"
+        ]
+
+        return hashlib.sha256(
+            "\n".join(user_messages).encode("utf-8")
+        ).hexdigest()
 
     def _judge(self, sample: Dict[str, Any]) -> bool:
         if not self.enable_quality_judge:
@@ -463,9 +641,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
         topic = self.random.choice(self.topics)
         task = self.random.choice(self.tasks)
         style = self.random.choice(self.styles)
-        difficulty = self.random.choice(
-            ["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.language == "fa" else ["Beginner", "Intermediate",
-                                                                                  "Advanced", "Expert"])
+        difficulty = self.random.choice(["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.language == "fa" else ["Beginner", "Intermediate", "Advanced", "Expert"])
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
         prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
@@ -476,12 +652,7 @@ Return only valid JSON with exactly two messages: user and assistant."""
                 print(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
 
                 temperature = min(0.95, max(0.55, self.temperature + self.random.uniform(-0.08, 0.08)))
-                result = self.llm.create_chat_completion(messages=[{"role": "system", "content": self._system_prompt()},
-                                                                   {"role": "user", "content": prompt}],
-                                                         temperature=temperature, top_p=self.top_p, min_p=self.min_p,
-                                                         repeat_penalty=self.repeat_penalty, max_tokens=self.max_tokens,
-                                                         response_format={"type": "json_object"},
-                                                         seed=self.seed + index * 100 + retry)
+                result = self.llm.create_chat_completion(messages=[{"role": "system", "content": self._system_prompt()}, {"role": "user", "content": prompt}], temperature=temperature, top_p=self.top_p, min_p=self.min_p, repeat_penalty=self.repeat_penalty, max_tokens=self.max_tokens, response_format={"type": "json_object"}, seed=self.seed + index * 100 + retry)
                 raw = result["choices"][0]["message"]["content"].strip()
 
                 try:
@@ -561,78 +732,41 @@ Return only valid JSON with exactly two messages: user and assistant."""
         state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
         temporary = f"{self._checkpoint_path()}.tmp"
         print(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
-        with open(temporary, "w", encoding="utf-8") as file:
-            json.dump(state, file, ensure_ascii=False)
+        with open(temporary, "w", encoding="utf-8") as f:
+            json.dump(state, f, ensure_ascii=False, indent=2)
         os.replace(temporary, self._checkpoint_path())
-        print("Checkpoint saved successfully")
 
-    def _load_checkpoint(self) -> int:
-        path = self._checkpoint_path()
-        if not os.path.isfile(path):
-            print("No checkpoint found. Starting from index 0")
-            return 0
-        print(f"Loading checkpoint: {path}")
-        with open(path, "r", encoding="utf-8") as file:
-            state = json.load(file)
-        self.accepted = int(state.get("accepted", 0))
-        self.attempts = int(state.get("attempts", 0))
-        self.stats.update(state.get("stats", {}))
-        self.signatures = set(state.get("signatures", []))
-        self.user_signatures = set(state.get("user_signatures", []))
-        print(f"Checkpoint loaded: accepted={self.accepted}, attempts={self.attempts}")
-        return int(state.get("next_index", 0))
-
-    def _load_existing_dedup_state(self) -> None:
-        shards = self._existing_shards()
-        print(f"Loading deduplication state from {len(shards)} existing shard(s)")
-        for path in shards:
-            try:
-                dataset = load_dataset("parquet", data_files=path, split="train")
-                for sample in dataset:
-                    self.signatures.add(self._signature(sample))
-                    self.user_signatures.add(self._user_signature(sample))
-            except Exception as exc:
-                self.logger.warning("Failed to load shard %s: %s", path, exc)
-        print(f"Deduplication state loaded: {len(self.signatures)} signatures")
-
-    def _progress(self) -> None:
-        elapsed = max(0.001, time.time() - self.start_time)
-        rate = self.accepted / elapsed * 60
-        print(f"Generated {self.accepted}/{self.total_samples} | Attempts {self.attempts} | Speed {rate:.2f}/min | Invalid JSON {self.stats['json_failed']} | Validation {self.stats['validation_failed']} | Language {self.stats['language_failed']} | Quality {self.stats['quality_failed']} | Duplicates {self.stats['duplicate_failed']}", end="\r", flush=True)
-
-    def _generate(self) -> List[str]:
-        print("Starting dataset generation")
+    def run(self) -> None:
         self._validate_config()
-        print("Configuration validated successfully")
-        if self.llm is None:
-            self.load_model()
-        if self.enable_quality_judge and self.judge_llm is None:
-            self.load_judge_model()
-        self.start_time = time.time()
-        next_index = self._load_checkpoint()
-        self._load_existing_dedup_state()
-        shard_index = len(self._existing_shards())
-        print(f"Starting generation from index {next_index}")
-        print(f"Existing shards: {shard_index}")
-        buffer = []
-        while self.accepted < self.total_samples:
-            if self.attempts >= self.max_attempts:
-                print(f"Maximum attempts reached: {self.attempts}/{self.max_attempts}")
-                raise RuntimeError(
-                    f"Maximum attempts reached. accepted={self.accepted}, target={self.total_samples}, attempts={self.attempts}, stats={self.stats}")
 
+        self.start_time = time.time()
+
+        print("=" * 80)
+        print("Starting synthetic dataset generation")
+        print(f"Target samples: {self.total_samples}")
+        print(f"Language: {self.language}")
+        print(f"Output: {self.output_path}")
+        print("=" * 80)
+
+        self.load_model()
+        self.load_judge_model()
+
+        existing_shards = self._existing_shards()
+
+        if existing_shards:
+            print(f"Found {len(existing_shards)} existing shard(s)")
+
+        current_shard: List[Dict[str, Any]] = []
+        shard_index = len(existing_shards)
+        next_index = self.accepted
+
+        while self.accepted < self.total_samples and self.attempts < self.max_attempts:
             self.attempts += 1
             self.stats["attempts"] = self.attempts
-            print(f"Generating sample: index={next_index}, attempt={self.attempts}")
 
-            sample = self._generate_sample(next_index)
-            next_index += 1
+            sample = self._generate_sample(self.attempts)
 
             if not sample:
-                print(f"Sample generation failed: index={next_index - 1}")
-                if self.attempts % self.checkpoint_interval == 0:
-                    print(f"Saving checkpoint: next_index={next_index}")
-                    self._save_checkpoint(next_index)
                 continue
 
             signature = self._signature(sample)
@@ -640,99 +774,42 @@ Return only valid JSON with exactly two messages: user and assistant."""
 
             if signature in self.signatures or user_signature in self.user_signatures:
                 self.stats["duplicate_failed"] += 1
-                print(f"Duplicate sample rejected: index={next_index - 1}")
-                if self.attempts % self.checkpoint_interval == 0:
-                    print(f"Saving checkpoint: next_index={next_index}")
-                    self._save_checkpoint(next_index)
+                print(f"Duplicate sample rejected: index={self.attempts}")
                 continue
 
             self.signatures.add(signature)
             self.user_signatures.add(user_signature)
-            buffer.append(sample)
+
+            current_shard.append(sample)
+
             self.accepted += 1
             self.stats["accepted"] = self.accepted
-            print(f"Sample accepted: {self.accepted}/{self.total_samples}")
+            next_index = self.accepted
 
-            if len(buffer) >= self.shard_size:
-                print(f"Saving shard: index={shard_index}, samples={len(buffer)}")
-                self._save_shard(buffer, shard_index)
+            print(
+                f"Accepted: {self.accepted}/{self.total_samples} "
+                f"| Attempts: {self.attempts}/{self.max_attempts}"
+            )
+
+            if len(current_shard) >= self.shard_size:
+                self._save_shard(current_shard, shard_index)
                 shard_index += 1
-                buffer = []
+                current_shard = []
 
             if self.accepted % self.checkpoint_interval == 0:
-                print(f"Saving checkpoint: next_index={next_index}")
                 self._save_checkpoint(next_index)
 
-            self._progress()
-        if buffer:
-            self._save_shard(buffer, shard_index)
-        self._save_checkpoint(next_index)
-        print()
-        print(f"Generation completed: {self.accepted} samples accepted")
-        return self._existing_shards()
+        if current_shard:
+            self._save_shard(current_shard, shard_index)
 
-    def _export_final(self) -> str:
-        print("Starting final dataset export")
-        shards = self._existing_shards()
-        if not shards:
-            raise RuntimeError("No dataset shards found")
-        print(f"Found {len(shards)} shard(s) for export")
-        datasets = [load_dataset("parquet", data_files=path, split="train") for path in shards]
-        columns = datasets[0].column_names
-        merged = {column: [] for column in columns}
-        for dataset in datasets:
-            for column in columns:
-                merged[column].extend(dataset[column])
-        temporary = f"{self.output_path}.tmp"
-        print(f"Writing final dataset: {self.output_path}")
-        Dataset.from_dict(merged).to_parquet(temporary)
-        os.replace(temporary, self.output_path)
-        print(f"Final dataset exported successfully: {self.output_path}")
-        return self.output_path
+        self._save_checkpoint(self.accepted)
 
-    def _cleanup(self, remove_shards: bool, remove_checkpoint) -> None:
-        print("Starting cleanup")
-        if remove_shards:
-            for path in self._existing_shards():
-                if os.path.isfile(path):
-                    print(f"Removing shard: {path}")
-                    os.remove(path)
-        if remove_checkpoint and os.path.isdir(self._checkpoint_dir()):
-            print(f"Removing checkpoint directory: {self._checkpoint_dir()}")
-            shutil.rmtree(self._checkpoint_dir())
-        print("Cleanup completed")
+        elapsed = time.time() - self.start_time
 
-    def _get_stats(self) -> Dict[str, Any]:
-        elapsed = max(0.001, time.time() - self.start_time) if self.start_time else 0.0
-        result = dict(self.stats)
-        result["elapsed_seconds"] = elapsed
-        result["samples_per_minute"] = self.accepted / elapsed * 60 if elapsed else 0.0
-        result["acceptance_rate"] = self.accepted / max(1, self.attempts)
-        return result
-
-    def run(self) -> str:
-        print("Starting dataset generation pipeline")
-        self._generate()
-
-        if self.export_final:
-            print("Final export is enabled")
-            result = self._export_final()
-
-            if self.cleanup_shards:
-                print("Shard cleanup is enabled")
-                self._cleanup(
-                    remove_shards=True,
-                    remove_checkpoint=True
-                )
-
-            print(f"Dataset saved: {result}")
-            print(f"Samples: {self.accepted}")
-            print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
-            print("Dataset generation pipeline completed successfully")
-            return result
-
-        print(f"Dataset shards saved in: {self._output_dir()}")
-        print(f"Samples: {self.accepted}")
-        print(f"Stats: {json.dumps(self._get_stats(), ensure_ascii=False)}")
-        print("Dataset generation pipeline completed successfully")
-        return self._output_dir()
+        print("=" * 80)
+        print("Generation finished")
+        print(f"Accepted samples: {self.accepted}")
+        print(f"Total attempts: {self.attempts}")
+        print(f"Elapsed time: {elapsed:.2f} seconds")
+        print(f"Stats: {self.stats}")
+        print("=" * 80)

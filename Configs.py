@@ -1,7 +1,7 @@
 
 class SyntheticDatasetConfig:
     def __init__(self, logger):
-        self.logger=logger
+        self.logger = logger
 
         self.model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
         self.output_path = r"./dataset/synthetic.parquet"
@@ -38,178 +38,309 @@ class SyntheticDatasetConfig:
         self.multi_turn = False
 
         self.topics = {
-        "fa": [
-            "هوش مصنوعی",
-            "یادگیری ماشین",
-            "یادگیری عمیق",
-            "پردازش زبان طبیعی",
-            "بینایی ماشین",
-            "مدل‌های زبانی بزرگ",
-            "هوش مصنوعی مولد",
-            "مهندسی پرامپت",
-            "رباتیک",
-            "برنامه‌نویسی",
-            "پایتون",
-            "توسعه نرم‌افزار",
-            "مهندسی نرم‌افزار",
-            "الگوریتم‌ها و ساختمان داده",
-            "پایگاه داده",
-            "رایانش ابری",
-            "دوآپس",
-            "سیستم‌عامل",
-            "شبکه‌های کامپیوتری",
-            "امنیت سایبری",
-            "توسعه وب",
-            "توسعه اپلیکیشن موبایل",
-            "علم داده",
-            "تحلیل داده",
-            "آمار",
-            "ریاضیات",
-            "فیزیک",
-            "شیمی",
-            "زیست‌شناسی",
-            "پزشکی عمومی",
-            "سلامت دیجیتال",
-            "فناوری سلامت",
-            "زیست‌فناوری",
-            "کسب‌وکار",
-            "مدیریت",
-            "اقتصاد",
-            "بازاریابی",
-            "فروش",
-            "کارآفرینی",
-            "مدیریت پروژه",
-            "تجربه کاربری",
-            "طراحی محصول",
-            "آموزش",
-            "روان‌شناسی",
-            "فلسفه",
-            "تاریخ",
-            "جغرافیا",
-            "حقوق",
-            "ترجمه",
-            "زبان‌شناسی",
-            "نگارش",
-            "تولید محتوا",
-            "سئو",
-            "محیط زیست",
-            "انرژی",
-            "اینترنت اشیا"
-        ],
+            "fa": [
+                "هوش مصنوعی",
+                "یادگیری ماشین",
+                "یادگیری عمیق",
+                "پردازش زبان طبیعی",
+                "بینایی ماشین",
+                "مدل‌های زبانی بزرگ",
+                "هوش مصنوعی مولد",
+                "مهندسی پرامپت",
+                "رباتیک",
+                "برنامه‌نویسی",
+                "پایتون",
+                "توسعه نرم‌افزار",
+                "مهندسی نرم‌افزار",
+                "الگوریتم‌ها و ساختمان داده",
+                "پایگاه داده",
+                "رایانش ابری",
+                "دوآپس",
+                "سیستم‌عامل",
+                "شبکه‌های کامپیوتری",
+                "امنیت سایبری",
+                "توسعه وب",
+                "توسعه اپلیکیشن موبایل",
+                "علم داده",
+                "تحلیل داده",
+                "آمار",
+                "ریاضیات",
+                "فیزیک",
+                "شیمی",
+                "زیست‌شناسی",
+                "پزشکی عمومی",
+                "سلامت دیجیتال",
+                "فناوری سلامت",
+                "زیست‌فناوری",
+                "کسب‌وکار",
+                "مدیریت",
+                "اقتصاد",
+                "بازاریابی",
+                "فروش",
+                "کارآفرینی",
+                "مدیریت پروژه",
+                "تجربه کاربری",
+                "طراحی محصول",
+                "آموزش",
+                "روان‌شناسی",
+                "فلسفه",
+                "تاریخ",
+                "جغرافیا",
+                "حقوق",
+                "ترجمه",
+                "زبان‌شناسی",
+                "نگارش",
+                "تولید محتوا",
+                "سئو",
+                "محیط زیست",
+                "انرژی",
+                "اینترنت اشیا"
+            ],
 
-        "en": [
-            "Artificial Intelligence",
-            "Machine Learning",
-            "Deep Learning",
-            "Natural Language Processing",
-            "Computer Vision",
-            "Large Language Models",
-            "Generative AI",
-            "Prompt Engineering",
-            "Robotics",
-            "Programming",
-            "Python",
-            "Software Development",
-            "Software Engineering",
-            "Algorithms and Data Structures",
-            "Databases",
-            "Cloud Computing",
-            "DevOps",
-            "Operating Systems",
-            "Computer Networks",
-            "Cybersecurity",
-            "Web Development",
-            "Mobile Application Development",
-            "Data Science",
-            "Data Analysis",
-            "Statistics",
-            "Mathematics",
-            "Physics",
-            "Chemistry",
-            "Biology",
-            "General Medicine",
-            "Digital Health",
-            "Health Technology",
-            "Biotechnology",
-            "Business",
-            "Management",
-            "Economics",
-            "Marketing",
-            "Sales",
-            "Entrepreneurship",
-            "Project Management",
-            "User Experience",
-            "Product Design",
-            "Education",
-            "Psychology",
-            "Philosophy",
-            "History",
-            "Geography",
-            "Law",
-            "Translation",
-            "Linguistics",
-            "Writing",
-            "Content Creation",
-            "SEO",
-            "Environment",
-            "Energy",
-            "Internet of Things"
-        ]
-    }
+            "en": [
+                "Artificial Intelligence",
+                "Machine Learning",
+                "Deep Learning",
+                "Natural Language Processing",
+                "Computer Vision",
+                "Large Language Models",
+                "Generative AI",
+                "Prompt Engineering",
+                "Robotics",
+                "Programming",
+                "Python",
+                "Software Development",
+                "Software Engineering",
+                "Algorithms and Data Structures",
+                "Databases",
+                "Cloud Computing",
+                "DevOps",
+                "Operating Systems",
+                "Computer Networks",
+                "Cybersecurity",
+                "Web Development",
+                "Mobile Application Development",
+                "Data Science",
+                "Data Analysis",
+                "Statistics",
+                "Mathematics",
+                "Physics",
+                "Chemistry",
+                "Biology",
+                "General Medicine",
+                "Digital Health",
+                "Health Technology",
+                "Biotechnology",
+                "Business",
+                "Management",
+                "Economics",
+                "Marketing",
+                "Sales",
+                "Entrepreneurship",
+                "Project Management",
+                "User Experience",
+                "Product Design",
+                "Education",
+                "Psychology",
+                "Philosophy",
+                "History",
+                "Geography",
+                "Law",
+                "Translation",
+                "Linguistics",
+                "Writing",
+                "Content Creation",
+                "SEO",
+                "Environment",
+                "Energy",
+                "Internet of Things"
+            ]
+        }
 
         self._logged = False
 
-        self.load_model_use_mmap=True,
-        self.load_model_use_mlock=False,
-        self.load_model_verbose=True,
+        self.load_model_use_mmap = True
+        self.load_model_use_mlock = False
+        self.load_model_verbose = True
+
         self.language_configs = {
             "fa": {
                 "name": "Persian",
                 "native": "فارسی",
                 "script_min": 0.58,
                 "prompt": "تمام محتوای سؤال کاربر و پاسخ دستیار باید به فارسی طبیعی، روان، حرفه‌ای و بومی نوشته شود. ساختار جمله‌ها باید شبیه نوشته و گفتار طبیعی یک فارسی‌زبان باشد و نباید ترجمه تحت‌اللفظی از انگلیسی به فارسی باشد. از نیم‌فاصله فارسی در ترکیبات مناسب مانند «می‌شود»، «می‌کند»، «نرم‌افزارها»، «داده‌ها»، «بهینه‌سازی» و موارد مشابه استفاده کن. از حروف فارسی «ی» و «ک» استفاده کن و از حروف عربی «ي» و «ك» استفاده نکن. از علائم نگارشی فارسی مانند «،»، «؛»، «؟» و «»» در جای مناسب استفاده کن. واژه‌های انگلیسی فقط در مواردی مانند نام فناوری، نام محصول، کد، نام زبان برنامه‌نویسی، مخفف، استاندارد یا اصطلاح تخصصی رایج مجاز هستند.",
-                "tasks": ["پرسش و پاسخ", "توضیح مفهوم", "مقایسه", "حل مسئله", "استدلال", "خلاصه‌سازی", "دسته‌بندی",
-                          "ترجمه", "بازنویسی", "عیب‌یابی", "آموزش مرحله‌به‌مرحله", "تصمیم‌گیری", "تحلیل مفهوم",
-                          "ارائه مثال", "راهنمای عملی", "تحلیل علت و معلول", "بررسی مزایا و معایب", "تحلیل سناریو",
-                          "تحلیل خطا", "ارائه پیشنهاد", "ارزیابی", "تفسیر", "طراحی راهکار", "برنامه‌ریزی"],
-                "styles": ["کوتاه و دقیق", "توضیحی و کامل", "مرحله‌به‌مرحله", "آموزشی برای مبتدی", "فنی و تخصصی",
-                           "عملی", "تحلیلی", "مقایسه‌ای", "عیب‌یابی", "مبتنی بر سناریو", "مبتنی بر استدلال",
-                           "مبتنی بر مثال", "مختصر اما کامل", "ساده و قابل فهم", "پیشرفته و تخصصی"],
-                "audiences": ["کاربر عمومی", "مبتدی", "دانش‌آموز", "دانشجو", "برنامه‌نویس", "مهندس", "پژوهشگر", "مدیر",
-                              "کارشناس کسب‌وکار", "متخصص فنی", "کاربر حرفه‌ای"],
-                "question_styles": ["پرسش مستقیم", "پرسش مبتنی بر سناریو", "پرسش مسئله‌محور", "پرسش چگونه", "پرسش چرا",
-                                    "پرسش اگر", "پرسش مقایسه‌ای", "پرسش عیب‌یابی", "پرسش مفهومی", "درخواست عملی",
-                                    "پرسش چندبخشی", "پرسش تصمیم‌محور"],
-                "bad_patterns": ["به عنوان یک مدل زبانی", "به عنوان هوش مصنوعی", "به عنوان یک دستیار هوش مصنوعی",
-                                 "امیدوارم این پاسخ مفید باشد", "اگر سؤال دیگری دارید",
-                                 "در صورت داشتن هرگونه سؤال دیگر", "من نمی‌توانم به اینترنت دسترسی داشته باشم"]
+                "tasks": [
+                    "پرسش و پاسخ",
+                    "توضیح مفهوم",
+                    "مقایسه",
+                    "حل مسئله",
+                    "استدلال",
+                    "خلاصه‌سازی",
+                    "دسته‌بندی",
+                    "ترجمه",
+                    "بازنویسی",
+                    "عیب‌یابی",
+                    "آموزش مرحله‌به‌مرحله",
+                    "تصمیم‌گیری",
+                    "تحلیل مفهوم",
+                    "ارائه مثال",
+                    "راهنمای عملی",
+                    "تحلیل علت و معلول",
+                    "بررسی مزایا و معایب",
+                    "تحلیل سناریو",
+                    "تحلیل خطا",
+                    "ارائه پیشنهاد",
+                    "ارزیابی",
+                    "تفسیر",
+                    "طراحی راهکار",
+                    "برنامه‌ریزی"
+                ],
+                "styles": [
+                    "کوتاه و دقیق",
+                    "توضیحی و کامل",
+                    "مرحله‌به‌مرحله",
+                    "آموزشی برای مبتدی",
+                    "فنی و تخصصی",
+                    "عملی",
+                    "تحلیلی",
+                    "مقایسه‌ای",
+                    "عیب‌یابی",
+                    "مبتنی بر سناریو",
+                    "مبتنی بر استدلال",
+                    "مبتنی بر مثال",
+                    "مختصر اما کامل",
+                    "ساده و قابل فهم",
+                    "پیشرفته و تخصصی"
+                ],
+                "audiences": [
+                    "کاربر عمومی",
+                    "مبتدی",
+                    "دانش‌آموز",
+                    "دانشجو",
+                    "برنامه‌نویس",
+                    "مهندس",
+                    "پژوهشگر",
+                    "مدیر",
+                    "کارشناس کسب‌وکار",
+                    "متخصص فنی",
+                    "کاربر حرفه‌ای"
+                ],
+                "question_styles": [
+                    "پرسش مستقیم",
+                    "پرسش مبتنی بر سناریو",
+                    "پرسش مسئله‌محور",
+                    "پرسش چگونه",
+                    "پرسش چرا",
+                    "پرسش اگر",
+                    "پرسش مقایسه‌ای",
+                    "پرسش عیب‌یابی",
+                    "پرسش مفهومی",
+                    "درخواست عملی",
+                    "پرسش چندبخشی",
+                    "پرسش تصمیم‌محور"
+                ],
+                "bad_patterns": [
+                    "به عنوان یک مدل زبانی",
+                    "به عنوان هوش مصنوعی",
+                    "به عنوان یک دستیار هوش مصنوعی",
+                    "امیدوارم این پاسخ مفید باشد",
+                    "اگر سؤال دیگری دارید",
+                    "در صورت داشتن هرگونه سؤال دیگر",
+                    "من نمی‌توانم به اینترنت دسترسی داشته باشم"
+                ]
             },
+
             "en": {
                 "name": "English",
                 "native": "English",
                 "script_min": 0.65,
                 "prompt": "All user and assistant content must be written in natural, fluent, idiomatic English. Avoid literal translations, unnatural phrasing and repetitive templates.",
-                "tasks": ["Question answering", "Explanation", "Comparison", "Problem solving", "Reasoning",
-                          "Summarization", "Classification", "Translation", "Rewriting", "Troubleshooting",
-                          "Step-by-step instruction", "Decision making", "Concept analysis", "Example generation",
-                          "Practical guidance", "Cause and effect analysis", "Advantages and disadvantages",
-                          "Scenario analysis", "Error analysis", "Evaluation"],
-                "styles": ["Short and precise", "Detailed explanatory", "Step-by-step", "Educational", "Technical",
-                           "Practical", "Analytical", "Comparative", "Troubleshooting", "Scenario-based",
-                           "Reasoning-focused", "Example-driven", "Concise but complete", "Beginner-friendly",
-                           "Expert-level"],
-                "audiences": ["General user", "Beginner", "Student", "Developer", "Engineer", "Researcher", "Manager",
-                              "Business professional", "Technical professional", "Experienced practitioner"],
-                "question_styles": ["Direct question", "Scenario-based question", "Problem-based question",
-                                    "How-to question", "Why question", "What-if question", "Comparison question",
-                                    "Troubleshooting question", "Conceptual question", "Practical request",
-                                    "Multi-part question", "Decision-oriented question"],
-                "bad_patterns": ["as an ai", "as an ai language model", "i hope this helps",
-                                 "if you have any further questions", "i cannot browse the internet"]
+                "tasks": [
+                    "Question answering",
+                    "Explanation",
+                    "Comparison",
+                    "Problem solving",
+                    "Reasoning",
+                    "Summarization",
+                    "Classification",
+                    "Translation",
+                    "Rewriting",
+                    "Troubleshooting",
+                    "Step-by-step instruction",
+                    "Decision making",
+                    "Concept analysis",
+                    "Example generation",
+                    "Practical guidance",
+                    "Cause and effect analysis",
+                    "Advantages and disadvantages",
+                    "Scenario analysis",
+                    "Error analysis",
+                    "Evaluation"
+                ],
+                "styles": [
+                    "Short and precise",
+                    "Detailed explanatory",
+                    "Step-by-step",
+                    "Educational",
+                    "Technical",
+                    "Practical",
+                    "Analytical",
+                    "Comparative",
+                    "Troubleshooting",
+                    "Scenario-based",
+                    "Reasoning-focused",
+                    "Example-driven",
+                    "Concise but complete",
+                    "Beginner-friendly",
+                    "Expert-level"
+                ],
+                "audiences": [
+                    "General user",
+                    "Beginner",
+                    "Student",
+                    "Developer",
+                    "Engineer",
+                    "Researcher",
+                    "Manager",
+                    "Business professional",
+                    "Technical professional",
+                    "Experienced practitioner"
+                ],
+                "question_styles": [
+                    "Direct question",
+                    "Scenario-based question",
+                    "Problem-based question",
+                    "How-to question",
+                    "Why question",
+                    "What-if question",
+                    "Comparison question",
+                    "Troubleshooting question",
+                    "Conceptual question",
+                    "Practical request",
+                    "Multi-part question",
+                    "Decision-oriented question"
+                ],
+                "bad_patterns": [
+                    "as an ai",
+                    "as an ai language model",
+                    "i hope this helps",
+                    "if you have any further questions",
+                    "i cannot browse the internet"
+                ]
             }
         }
-        self.stats = {"attempts": 0, "accepted": 0, "generation_failed": 0, "json_failed": 0, "validation_failed": 0,
-                      "language_failed": 0, "quality_failed": 0, "duplicate_failed": 0}
+
+        self.stats = {
+            "attempts": 0,
+            "accepted": 0,
+            "generation_failed": 0,
+            "json_failed": 0,
+            "validation_failed": 0,
+            "language_failed": 0,
+            "quality_failed": 0,
+            "duplicate_failed": 0
+        }
+
         self.system_prompt = """
         You are a professional synthetic instruction-tuning dataset generator.
 
@@ -236,8 +367,10 @@ class SyntheticDatasetConfig:
 
         Return only valid JSON.
         """
+
         self.intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
         self.intro_en = "Generate a high-quality multi-turn instruction-tuning example."
+
         self.prompt_config = {
             "fa": {
                 "intro": {
@@ -251,6 +384,7 @@ class SyntheticDatasetConfig:
 
         خروجی باید دقیقاً شامل یک پیام user و یک پیام assistant باشد.
         """,
+
                     "multi": """
         یک گفت‌وگوی چندمرحله‌ای تولید کن.
 
@@ -323,6 +457,7 @@ class SyntheticDatasetConfig:
 
         The output must contain exactly two messages.
         """,
+
                     "multi": """
         Generate a multi-turn conversation.
 
@@ -370,6 +505,7 @@ class SyntheticDatasetConfig:
                 }
             }
         }
+
         self.judge_config = {
             "system_prompt": "You are a strict dataset quality evaluator. Return only valid JSON.",
 
@@ -397,10 +533,12 @@ class SyntheticDatasetConfig:
                 "type": "json_object"
             }
         }
+
         self.difficulties = {
             "fa": ["مبتدی", "متوسط", "پیشرفته", "تخصصی"],
             "en": ["Beginner", "Intermediate", "Advanced", "Expert"]
         }
+
         self.generation_config = {
             "temperature_min": 0.55,
             "temperature_max": 0.95,
@@ -409,49 +547,144 @@ class SyntheticDatasetConfig:
                 "type": "json_object"
             }
         }
-        self.config_text = f"""\n{"=" * 70}
- SyntheticDatasetConfig Configuration
- {"=" * 70}
- Model_Path                       : {self.model_path}
- Output_Path                      : {self.output_path}
- Total_Samples                    : {self.total_samples}
- N_Context                        : {self.n_ctx}
- N_Threads                        : {self.n_threads}
- N_Batch                          : {self.n_batch}
- Max_Tokens                       : {self.max_tokens}
- N_GPU_Layers                     : {self.n_gpu_layers}
- Seed                             : {self.seed}
- Language                         : {self.language}
- Shard_Size                       : {self.shard_size}
- Checkpoint_Interval              : {self.checkpoint_interval}
- Max_Attempts_Multiplier          : {self.max_attempts_multiplier}
- Min_User_Words                   : {self.min_user_words}
- Max_User_Words                   : {self.max_user_words}
- Min_Assistant_Words              : {self.min_assistant_words}
- Max_Assistant_Words              : {self.max_assistant_words}
- Min_Quality_Score                : {self.min_quality_score}
- Temperature                      : {self.temperature}
- Top_P                            : {self.top_p}
- Min_P                            : {self.min_p}
- Repeat_Penalty                   : {self.repeat_penalty}
- Retry_Count                      : {self.retry_count}
- Enable_Quality_Judge             : {self.enable_quality_judge}
- Judge_Model_Path                 : {self.judge_model_path}
- Export_Final                     : {self.export_final}
- Cleanup_Shards                   : {self.cleanup_shards}
- Min_Turns                        : {self.min_turns}
- Max_Turns                        : {self.max_turns}
- Multi_Turn                       : {self.multi_turn}
- Topics_Languages                 : {list(self.topics.keys())}
- Topics_Count_FA                  : {len(self.topics.get("fa", []))}
- Topics_Count_EN                  : {len(self.topics.get("en", []))}
 
- load_model_use_mmap              : {self.load_model_use_mmap}
- load_model_use_mlock             : {self.load_model_use_mlock}
- load_model_verbose               : {self.load_model_verbose}"""
+        self.config_text = self._build_config_text()
+
+    def _build_config_text(self) -> str:
+        lines = []
+
+        lines.append("=" * 90)
+        lines.append("SyntheticDatasetConfig Configuration")
+        lines.append("=" * 90)
+
+        lines.append("")
+        lines.append("[MODEL]")
+        lines.append(f"Model_Path                : {self.model_path}")
+        lines.append(f"N_Context                 : {self.n_ctx}")
+        lines.append(f"N_Threads                 : {self.n_threads}")
+        lines.append(f"N_Batch                   : {self.n_batch}")
+        lines.append(f"Max_Tokens                : {self.max_tokens}")
+        lines.append(f"N_GPU_Layers              : {self.n_gpu_layers}")
+        lines.append(f"Load_Model_Use_MMap       : {self.load_model_use_mmap}")
+        lines.append(f"Load_Model_Use_MLock      : {self.load_model_use_mlock}")
+        lines.append(f"Load_Model_Verbose        : {self.load_model_verbose}")
+
+        lines.append("")
+        lines.append("[OUTPUT]")
+        lines.append(f"Output_Path               : {self.output_path}")
+        lines.append(f"Export_Final              : {self.export_final}")
+        lines.append(f"Cleanup_Shards            : {self.cleanup_shards}")
+        lines.append(f"Shard_Size                : {self.shard_size}")
+        lines.append(f"Checkpoint_Interval       : {self.checkpoint_interval}")
+
+        lines.append("")
+        lines.append("[GENERATION]")
+        lines.append(f"Total_Samples             : {self.total_samples}")
+        lines.append(f"Seed                      : {self.seed}")
+        lines.append(f"Language                  : {self.language}")
+        lines.append(f"Temperature               : {self.temperature}")
+        lines.append(f"Top_P                     : {self.top_p}")
+        lines.append(f"Min_P                     : {self.min_p}")
+        lines.append(f"Repeat_Penalty            : {self.repeat_penalty}")
+        lines.append(f"Retry_Count               : {self.retry_count}")
+        lines.append(f"Max_Attempts_Multiplier   : {self.max_attempts_multiplier}")
+        lines.append(f"Generation_Config         : {repr(self.generation_config)}")
+
+        lines.append("")
+        lines.append("[VALIDATION]")
+        lines.append(f"Min_User_Words            : {self.min_user_words}")
+        lines.append(f"Max_User_Words            : {self.max_user_words}")
+        lines.append(f"Min_Assistant_Words       : {self.min_assistant_words}")
+        lines.append(f"Max_Assistant_Words       : {self.max_assistant_words}")
+        lines.append(f"Min_Quality_Score         : {self.min_quality_score}")
+
+        lines.append("")
+        lines.append("[MULTI TURN]")
+        lines.append(f"Multi_Turn                : {self.multi_turn}")
+        lines.append(f"Min_Turns                 : {self.min_turns}")
+        lines.append(f"Max_Turns                 : {self.max_turns}")
+
+        lines.append("")
+        lines.append("[QUALITY JUDGE]")
+        lines.append(f"Enable_Quality_Judge      : {self.enable_quality_judge}")
+        lines.append(f"Judge_Model_Path          : {self.judge_model_path}")
+        lines.append(f"Judge_Config              : {repr(self.judge_config)}")
+
+        lines.append("")
+        lines.append("[TOPICS]")
+        lines.append(f"Topics_Languages          : {list(self.topics.keys())}")
+        lines.append(f"Topics_Count_FA           : {len(self.topics.get('fa', []))}")
+        lines.append(f"Topics_Count_EN           : {len(self.topics.get('en', []))}")
+
+        for language, topics in self.topics.items():
+            lines.append(f"Topics_{language.upper()}          : {topics}")
+
+        lines.append("")
+        lines.append("[DIFFICULTIES]")
+        lines.append(f"Difficulties               : {repr(self.difficulties)}")
+
+        lines.append("")
+        lines.append("[LANGUAGE CONFIGS]")
+
+        for language, config in self.language_configs.items():
+            lines.append("")
+            lines.append(f"Language                  : {language}")
+            lines.append(f"Name                      : {config.get('name')}")
+            lines.append(f"Native                    : {config.get('native')}")
+            lines.append(f"Script_Min                : {config.get('script_min')}")
+
+            lines.append(f"Prompt                    : {config.get('prompt')}")
+
+            lines.append(
+                f"Tasks_Count               : {len(config.get('tasks', []))}"
+            )
+            lines.append(
+                f"Styles_Count              : {len(config.get('styles', []))}"
+            )
+            lines.append(
+                f"Audiences_Count           : {len(config.get('audiences', []))}"
+            )
+            lines.append(
+                f"Question_Styles_Count     : {len(config.get('question_styles', []))}"
+            )
+            lines.append(
+                f"Bad_Patterns_Count        : {len(config.get('bad_patterns', []))}"
+            )
+
+            lines.append(f"Tasks                     : {config.get('tasks')}")
+            lines.append(f"Styles                    : {config.get('styles')}")
+            lines.append(f"Audiences                 : {config.get('audiences')}")
+            lines.append(
+                f"Question_Styles           : {config.get('question_styles')}"
+            )
+            lines.append(
+                f"Bad_Patterns              : {config.get('bad_patterns')}"
+            )
+
+        lines.append("")
+        lines.append("[SYSTEM PROMPT]")
+        lines.append(self.system_prompt)
+
+        lines.append("")
+        lines.append("[INTRO PROMPTS]")
+        lines.append(f"Intro_FA                  : {self.intro_fa}")
+        lines.append(f"Intro_EN                  : {self.intro_en}")
+
+        lines.append("")
+        lines.append("[PROMPT CONFIG]")
+        lines.append(repr(self.prompt_config))
+
+        lines.append("")
+        lines.append("[STATS]")
+        for key, value in self.stats.items():
+            lines.append(f"{key:<25}: {value}")
+        lines.append("-" * 113)
+
+        return "\n".join(lines)
 
     def log(self):
         if self._logged:
             return
+
         self.logger.info(self.config_text)
         self._logged = True

@@ -18,7 +18,7 @@ def main():
         logger, path = logger_obj.setup()
         logger.info(
             f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')} | "
-            f"Auto hibernate: {'Enabled' if shutdown_after else 'Disabled'}"
+            f"Auto hibernate: {'Disabled' if shutdown_after else 'Enabled'}"
         )
 
         generator = SyntheticDatasetGenerator(

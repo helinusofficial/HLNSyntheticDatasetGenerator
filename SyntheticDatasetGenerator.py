@@ -27,37 +27,11 @@ class SyntheticDatasetGenerator:
         self.signatures: Set[str] = set()
         self.user_signatures: Set[str] = set()
         self.logger = logging.getLogger("SyntheticDatasetGenerator")
-        self.stats = {"attempts": 0, "accepted": 0, "generation_failed": 0, "json_failed": 0, "validation_failed": 0, "language_failed": 0, "quality_failed": 0, "duplicate_failed": 0}
-
-        self.language_configs = {
-            "fa": {
-                "name": "Persian",
-                "native": "فارسی",
-                "script_min": 0.58,
-                "prompt": "تمام محتوای سؤال کاربر و پاسخ دستیار باید به فارسی طبیعی، روان، حرفه‌ای و بومی نوشته شود. ساختار جمله‌ها باید شبیه نوشته و گفتار طبیعی یک فارسی‌زبان باشد و نباید ترجمه تحت‌اللفظی از انگلیسی به فارسی باشد. از نیم‌فاصله فارسی در ترکیبات مناسب مانند «می‌شود»، «می‌کند»، «نرم‌افزارها»، «داده‌ها»، «بهینه‌سازی» و موارد مشابه استفاده کن. از حروف فارسی «ی» و «ک» استفاده کن و از حروف عربی «ي» و «ك» استفاده نکن. از علائم نگارشی فارسی مانند «،»، «؛»، «؟» و «»» در جای مناسب استفاده کن. واژه‌های انگلیسی فقط در مواردی مانند نام فناوری، نام محصول، کد، نام زبان برنامه‌نویسی، مخفف، استاندارد یا اصطلاح تخصصی رایج مجاز هستند.",
-                "tasks": ["پرسش و پاسخ", "توضیح مفهوم", "مقایسه", "حل مسئله", "استدلال", "خلاصه‌سازی", "دسته‌بندی", "ترجمه", "بازنویسی", "عیب‌یابی", "آموزش مرحله‌به‌مرحله", "تصمیم‌گیری", "تحلیل مفهوم", "ارائه مثال", "راهنمای عملی", "تحلیل علت و معلول", "بررسی مزایا و معایب", "تحلیل سناریو", "تحلیل خطا", "ارائه پیشنهاد", "ارزیابی", "تفسیر", "طراحی راهکار", "برنامه‌ریزی"],
-                "styles": ["کوتاه و دقیق", "توضیحی و کامل", "مرحله‌به‌مرحله", "آموزشی برای مبتدی", "فنی و تخصصی", "عملی", "تحلیلی", "مقایسه‌ای", "عیب‌یابی", "مبتنی بر سناریو", "مبتنی بر استدلال", "مبتنی بر مثال", "مختصر اما کامل", "ساده و قابل فهم", "پیشرفته و تخصصی"],
-                "audiences": ["کاربر عمومی", "مبتدی", "دانش‌آموز", "دانشجو", "برنامه‌نویس", "مهندس", "پژوهشگر", "مدیر", "کارشناس کسب‌وکار", "متخصص فنی", "کاربر حرفه‌ای"],
-                "question_styles": ["پرسش مستقیم", "پرسش مبتنی بر سناریو", "پرسش مسئله‌محور", "پرسش چگونه", "پرسش چرا", "پرسش اگر", "پرسش مقایسه‌ای", "پرسش عیب‌یابی", "پرسش مفهومی", "درخواست عملی", "پرسش چندبخشی", "پرسش تصمیم‌محور"],
-                "bad_patterns": ["به عنوان یک مدل زبانی", "به عنوان هوش مصنوعی", "به عنوان یک دستیار هوش مصنوعی", "امیدوارم این پاسخ مفید باشد", "اگر سؤال دیگری دارید", "در صورت داشتن هرگونه سؤال دیگر", "من نمی‌توانم به اینترنت دسترسی داشته باشم"]
-            },
-            "en": {
-                "name": "English",
-                "native": "English",
-                "script_min": 0.65,
-                "prompt": "All user and assistant content must be written in natural, fluent, idiomatic English. Avoid literal translations, unnatural phrasing and repetitive templates.",
-                "tasks": ["Question answering", "Explanation", "Comparison", "Problem solving", "Reasoning", "Summarization", "Classification", "Translation", "Rewriting", "Troubleshooting", "Step-by-step instruction", "Decision making", "Concept analysis", "Example generation", "Practical guidance", "Cause and effect analysis", "Advantages and disadvantages", "Scenario analysis", "Error analysis", "Evaluation"],
-                "styles": ["Short and precise", "Detailed explanatory", "Step-by-step", "Educational", "Technical", "Practical", "Analytical", "Comparative", "Troubleshooting", "Scenario-based", "Reasoning-focused", "Example-driven", "Concise but complete", "Beginner-friendly", "Expert-level"],
-                "audiences": ["General user", "Beginner", "Student", "Developer", "Engineer", "Researcher", "Manager", "Business professional", "Technical professional", "Experienced practitioner"],
-                "question_styles": ["Direct question", "Scenario-based question", "Problem-based question", "How-to question", "Why question", "What-if question", "Comparison question", "Troubleshooting question", "Conceptual question", "Practical request", "Multi-part question", "Decision-oriented question"],
-                "bad_patterns": ["as an ai", "as an ai language model", "i hope this helps", "if you have any further questions", "i cannot browse the internet"]
-            }
-        }
-
-        if self.configs.language not in self.language_configs:
+        
+        if self.configs.language not in self.configs.language_configs:
             raise ValueError(f"Unsupported language: {self.configs.language}")
 
-        self.selected_lang_config = self.language_configs[self.configs.language]
+        self.selected_lang_config = self.configs.language_configs[self.configs.language]
         self.topics = self.configs.topics[self.configs.language]
         self.tasks = self.selected_lang_config["tasks"]
         self.styles = self.selected_lang_config["styles"]
@@ -104,37 +78,6 @@ class SyntheticDatasetGenerator:
         else:
             self.configs.min_turns = 1
             self.configs.max_turns = 1
-
-    def _system_prompt(self) -> str:
-        result= f"""You are a professional synthetic instruction-tuning dataset generator.
-
-    Do not use reasoning or thinking mode.
-    Do not generate <think> or </think> tags.
-    Answer directly without hidden reasoning.
-
-    Your target language is {self.selected_lang_config['name']}.
-    {self.selected_lang_config['prompt']}
-
-    Generate realistic, diverse, accurate, useful and natural user-assistant conversations.
-
-    Avoid:
-    - artificial prompts
-    - repetitive templates
-    - generic filler
-    - fabricated information
-    - unnecessary verbosity
-    - meta commentary
-    - references to the dataset
-    - references to generation instructions
-    - statements about being an AI
-    - reasoning traces
-    - chain-of-thought
-
-    For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts.
-
-    Return only valid JSON."""
-        self.logger.info(f"_system_prompt={result}")
-        return result
 
     def load_model(self) -> None:
         self.logger.info(f"Loading generation model: {self.configs.model_path}")
@@ -194,13 +137,6 @@ class SyntheticDatasetGenerator:
         persian = sum(1 for c in letters if "\u0600" <= c <= "\u06ff")
         return persian / len(letters)
 
-    def _latin_ratio(self, text: str) -> float:
-        letters = [c for c in text if c.isalpha()]
-        if not letters:
-            return 0.0
-        latin = sum(1 for c in letters if c.isascii() and c.isalpha())
-        return latin / len(letters)
-
     def _arabic_character_ratio(self, text: str) -> float:
         chars = [c for c in text if c.isalpha()]
         if not chars:
@@ -211,25 +147,34 @@ class SyntheticDatasetGenerator:
     def _persian_spacing_score(self, text: str) -> float:
         if self.configs.language != "fa":
             return 1.0
+
         words = self._words(text)
+
         if len(words) < 20:
             return 1.0
-        common_compounds = ["می", "نمی", "ها", "های", "تر", "ترین", "شده", "شوند", "کند", "کنند"]
+
+        prefixes = ["می", "نمی"]
+        suffixes = ["ها", "های", "تر", "ترین"]
+
         possible = 0
         correct = 0
+
         for word in words:
-            for prefix in ["می", "نمی"]:
+            for prefix in prefixes:
                 if word.startswith(prefix) and len(word) > len(prefix) + 2:
                     possible += 1
                     if "\u200c" in word:
                         correct += 1
-            for suffix in ["ها", "های", "تر", "ترین"]:
+
+            for suffix in suffixes:
                 if word.endswith(suffix) and len(word) > len(suffix) + 2:
                     possible += 1
                     if "\u200c" in word:
                         correct += 1
+
         if possible == 0:
             return 1.0
+
         return correct / possible
 
     def _contains_bad_pattern(self, text: str) -> bool:
@@ -675,7 +620,11 @@ class SyntheticDatasetGenerator:
                     messages=[
                         {
                             "role": "system",
-                            "content": self._system_prompt()
+                            "content": (
+                                f"{self.configs.system_prompt}\n\n"
+                                f"Your target language is {self.selected_lang_config['name']}.\n"
+                                f"{self.selected_lang_config['prompt']}"
+                            )
                         },
                         {
                             "role": "user",
@@ -740,30 +689,30 @@ class SyntheticDatasetGenerator:
                 try:
                     sample = json.loads(raw)
                 except json.JSONDecodeError:
-                    self.stats["json_failed"] += 1
+                    self.configs.stats["json_failed"] += 1
                     self.logger.info(f"JSON parsing failed: index={index}, retry={retry + 1}")
                     continue
 
                 valid, _ = self._validate_structure(sample)
                 if not valid:
-                    self.stats["validation_failed"] += 1
+                    self.configs.stats["validation_failed"] += 1
                     self.logger.info(f"Structure validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 sample = self._normalize_sample(sample)
                 valid, _ = self._validate_language(sample)
                 if not valid:
-                    self.stats["language_failed"] += 1
+                    self.configs.stats["language_failed"] += 1
                     self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if self._quality_score(sample) < self.configs.min_quality_score:
-                    self.stats["quality_failed"] += 1
+                    self.configs.stats["quality_failed"] += 1
                     self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if not self._judge(sample):
-                    self.stats["quality_failed"] += 1
+                    self.configs.stats["quality_failed"] += 1
                     self.logger.info(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
                     continue
 
@@ -771,7 +720,7 @@ class SyntheticDatasetGenerator:
                 return sample
 
             except Exception as exc:
-                self.stats["generation_failed"] += 1
+                self.configs.stats["generation_failed"] += 1
                 self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
                 self.logger.warning("Generation failure index=%s retry=%s error=%s", index, retry + 1, exc)
 
@@ -811,7 +760,7 @@ class SyntheticDatasetGenerator:
         self.logger.info(f"Shard {index} saved successfully: {len(samples)} samples")
 
     def _save_checkpoint(self, next_index: int) -> None:
-        state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
+        state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.configs.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
         temporary = f"{self._checkpoint_path()}.tmp"
         self.logger.info(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
         with open(temporary, "w", encoding="utf-8") as f:
@@ -844,7 +793,7 @@ class SyntheticDatasetGenerator:
 
         while self.accepted < self.configs.total_samples and self.attempts < self.max_attempts:
             self.attempts += 1
-            self.stats["attempts"] = self.attempts
+            self.configs.stats["attempts"] = self.attempts
 
             sample = self._generate_sample(self.attempts)
 
@@ -855,7 +804,7 @@ class SyntheticDatasetGenerator:
             user_signature = self._user_signature(sample)
 
             if signature in self.signatures or user_signature in self.user_signatures:
-                self.stats["duplicate_failed"] += 1
+                self.configs.stats["duplicate_failed"] += 1
                 self.logger.info(f"Duplicate sample rejected: index={self.attempts}")
                 continue
 
@@ -865,7 +814,7 @@ class SyntheticDatasetGenerator:
             current_shard.append(sample)
 
             self.accepted += 1
-            self.stats["accepted"] = self.accepted
+            self.configs.stats["accepted"] = self.accepted
             next_index = self.accepted
 
             self.logger.info(
@@ -893,5 +842,5 @@ class SyntheticDatasetGenerator:
         self.logger.info(f"Accepted samples: {self.accepted}")
         self.logger.info(f"Total attempts: {self.attempts}")
         self.logger.info(f"Elapsed time: {elapsed:.2f} seconds")
-        self.logger.info(f"Stats: {self.stats}")
+        self.logger.info(f"Stats: {self.configs.stats}")
         self.logger.info("=" * 80)

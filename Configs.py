@@ -162,7 +162,80 @@ class SyntheticDatasetConfig:
         self.load_model_use_mmap=True,
         self.load_model_use_mlock=False,
         self.load_model_verbose=True,
+        self.language_configs = {
+            "fa": {
+                "name": "Persian",
+                "native": "فارسی",
+                "script_min": 0.58,
+                "prompt": "تمام محتوای سؤال کاربر و پاسخ دستیار باید به فارسی طبیعی، روان، حرفه‌ای و بومی نوشته شود. ساختار جمله‌ها باید شبیه نوشته و گفتار طبیعی یک فارسی‌زبان باشد و نباید ترجمه تحت‌اللفظی از انگلیسی به فارسی باشد. از نیم‌فاصله فارسی در ترکیبات مناسب مانند «می‌شود»، «می‌کند»، «نرم‌افزارها»، «داده‌ها»، «بهینه‌سازی» و موارد مشابه استفاده کن. از حروف فارسی «ی» و «ک» استفاده کن و از حروف عربی «ي» و «ك» استفاده نکن. از علائم نگارشی فارسی مانند «،»، «؛»، «؟» و «»» در جای مناسب استفاده کن. واژه‌های انگلیسی فقط در مواردی مانند نام فناوری، نام محصول، کد، نام زبان برنامه‌نویسی، مخفف، استاندارد یا اصطلاح تخصصی رایج مجاز هستند.",
+                "tasks": ["پرسش و پاسخ", "توضیح مفهوم", "مقایسه", "حل مسئله", "استدلال", "خلاصه‌سازی", "دسته‌بندی",
+                          "ترجمه", "بازنویسی", "عیب‌یابی", "آموزش مرحله‌به‌مرحله", "تصمیم‌گیری", "تحلیل مفهوم",
+                          "ارائه مثال", "راهنمای عملی", "تحلیل علت و معلول", "بررسی مزایا و معایب", "تحلیل سناریو",
+                          "تحلیل خطا", "ارائه پیشنهاد", "ارزیابی", "تفسیر", "طراحی راهکار", "برنامه‌ریزی"],
+                "styles": ["کوتاه و دقیق", "توضیحی و کامل", "مرحله‌به‌مرحله", "آموزشی برای مبتدی", "فنی و تخصصی",
+                           "عملی", "تحلیلی", "مقایسه‌ای", "عیب‌یابی", "مبتنی بر سناریو", "مبتنی بر استدلال",
+                           "مبتنی بر مثال", "مختصر اما کامل", "ساده و قابل فهم", "پیشرفته و تخصصی"],
+                "audiences": ["کاربر عمومی", "مبتدی", "دانش‌آموز", "دانشجو", "برنامه‌نویس", "مهندس", "پژوهشگر", "مدیر",
+                              "کارشناس کسب‌وکار", "متخصص فنی", "کاربر حرفه‌ای"],
+                "question_styles": ["پرسش مستقیم", "پرسش مبتنی بر سناریو", "پرسش مسئله‌محور", "پرسش چگونه", "پرسش چرا",
+                                    "پرسش اگر", "پرسش مقایسه‌ای", "پرسش عیب‌یابی", "پرسش مفهومی", "درخواست عملی",
+                                    "پرسش چندبخشی", "پرسش تصمیم‌محور"],
+                "bad_patterns": ["به عنوان یک مدل زبانی", "به عنوان هوش مصنوعی", "به عنوان یک دستیار هوش مصنوعی",
+                                 "امیدوارم این پاسخ مفید باشد", "اگر سؤال دیگری دارید",
+                                 "در صورت داشتن هرگونه سؤال دیگر", "من نمی‌توانم به اینترنت دسترسی داشته باشم"]
+            },
+            "en": {
+                "name": "English",
+                "native": "English",
+                "script_min": 0.65,
+                "prompt": "All user and assistant content must be written in natural, fluent, idiomatic English. Avoid literal translations, unnatural phrasing and repetitive templates.",
+                "tasks": ["Question answering", "Explanation", "Comparison", "Problem solving", "Reasoning",
+                          "Summarization", "Classification", "Translation", "Rewriting", "Troubleshooting",
+                          "Step-by-step instruction", "Decision making", "Concept analysis", "Example generation",
+                          "Practical guidance", "Cause and effect analysis", "Advantages and disadvantages",
+                          "Scenario analysis", "Error analysis", "Evaluation"],
+                "styles": ["Short and precise", "Detailed explanatory", "Step-by-step", "Educational", "Technical",
+                           "Practical", "Analytical", "Comparative", "Troubleshooting", "Scenario-based",
+                           "Reasoning-focused", "Example-driven", "Concise but complete", "Beginner-friendly",
+                           "Expert-level"],
+                "audiences": ["General user", "Beginner", "Student", "Developer", "Engineer", "Researcher", "Manager",
+                              "Business professional", "Technical professional", "Experienced practitioner"],
+                "question_styles": ["Direct question", "Scenario-based question", "Problem-based question",
+                                    "How-to question", "Why question", "What-if question", "Comparison question",
+                                    "Troubleshooting question", "Conceptual question", "Practical request",
+                                    "Multi-part question", "Decision-oriented question"],
+                "bad_patterns": ["as an ai", "as an ai language model", "i hope this helps",
+                                 "if you have any further questions", "i cannot browse the internet"]
+            }
+        }
+        self.stats = {"attempts": 0, "accepted": 0, "generation_failed": 0, "json_failed": 0, "validation_failed": 0,
+                      "language_failed": 0, "quality_failed": 0, "duplicate_failed": 0}
+        self.system_prompt = """
+        You are a professional synthetic instruction-tuning dataset generator.
 
+        Do not use reasoning or thinking mode.
+        Do not generate <think> or </think> tags.
+        Answer directly without hidden reasoning.
+
+        Generate realistic, diverse, accurate, useful and natural user-assistant conversations.
+
+        Avoid:
+        - artificial prompts
+        - repetitive templates
+        - generic filler
+        - fabricated information
+        - unnecessary verbosity
+        - meta commentary
+        - references to the dataset
+        - references to generation instructions
+        - statements about being an AI
+        - reasoning traces
+        - chain-of-thought
+
+        For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts.
+
+        Return only valid JSON.
+        """
         self.config_text = f"""\n{"=" * 70}
  SyntheticDatasetConfig Configuration
  {"=" * 70}

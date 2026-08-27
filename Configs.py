@@ -158,45 +158,42 @@ class SyntheticDatasetConfig:
     }
 
         self._logged = False
-        self.config_text = f"""
-        {"=" * 70}
-        SyntheticDatasetConfig Configuration
-        {"=" * 70}
-         Model_Path                       : {self.model_path}
-         Output_Path                      : {self.output_path}
-         Total_Samples                    : {self.total_samples}
-         N_Context                        : {self.n_ctx}
-         N_Threads                        : {self.n_threads}
-         N_Batch                          : {self.n_batch}
-         Max_Tokens                       : {self.max_tokens}
-         N_GPU_Layers                     : {self.n_gpu_layers}
-         Seed                             : {self.seed}
-         Language                         : {self.language}
-         Shard_Size                       : {self.shard_size}
-         Checkpoint_Interval              : {self.checkpoint_interval}
-         Max_Attempts_Multiplier          : {self.max_attempts_multiplier}
-         Min_User_Words                   : {self.min_user_words}
-         Max_User_Words                   : {self.max_user_words}
-         Min_Assistant_Words              : {self.min_assistant_words}
-         Max_Assistant_Words              : {self.max_assistant_words}
-         Min_Quality_Score                : {self.min_quality_score}
-         Temperature                      : {self.temperature}
-         Top_P                            : {self.top_p}
-         Min_P                            : {self.min_p}
-         Repeat_Penalty                   : {self.repeat_penalty}
-         Retry_Count                      : {self.retry_count}
-         Enable_Quality_Judge             : {self.enable_quality_judge}
-         Judge_Model_Path                 : {self.judge_model_path}
-         Export_Final                     : {self.export_final}
-         Cleanup_Shards                   : {self.cleanup_shards}
-         Min_Turns                        : {self.min_turns}
-         Max_Turns                        : {self.max_turns}
-         Multi_Turn                       : {self.multi_turn}
-         Topics_Languages                 : {list(self.topics.keys())}
-         Topics_Count_FA                  : {len(self.topics.get("fa", []))}
-         Topics_Count_EN                  : {len(self.topics.get("en", []))}
-        {"-" * 103}
-        """
+        self.config_text = f"""\n{"=" * 70}
+ SyntheticDatasetConfig Configuration
+ {"=" * 70}
+ Model_Path                       : {self.model_path}
+ Output_Path                      : {self.output_path}
+ Total_Samples                    : {self.total_samples}
+ N_Context                        : {self.n_ctx}
+ N_Threads                        : {self.n_threads}
+ N_Batch                          : {self.n_batch}
+ Max_Tokens                       : {self.max_tokens}
+ N_GPU_Layers                     : {self.n_gpu_layers}
+ Seed                             : {self.seed}
+ Language                         : {self.language}
+ Shard_Size                       : {self.shard_size}
+ Checkpoint_Interval              : {self.checkpoint_interval}
+ Max_Attempts_Multiplier          : {self.max_attempts_multiplier}
+ Min_User_Words                   : {self.min_user_words}
+ Max_User_Words                   : {self.max_user_words}
+ Min_Assistant_Words              : {self.min_assistant_words}
+ Max_Assistant_Words              : {self.max_assistant_words}
+ Min_Quality_Score                : {self.min_quality_score}
+ Temperature                      : {self.temperature}
+ Top_P                            : {self.top_p}
+ Min_P                            : {self.min_p}
+ Repeat_Penalty                   : {self.repeat_penalty}
+ Retry_Count                      : {self.retry_count}
+ Enable_Quality_Judge             : {self.enable_quality_judge}
+ Judge_Model_Path                 : {self.judge_model_path}
+ Export_Final                     : {self.export_final}
+ Cleanup_Shards                   : {self.cleanup_shards}
+ Min_Turns                        : {self.min_turns}
+ Max_Turns                        : {self.max_turns}
+ Multi_Turn                       : {self.multi_turn}
+ Topics_Languages                 : {list(self.topics.keys())}
+ Topics_Count_FA                  : {len(self.topics.get("fa", []))}
+ Topics_Count_EN                  : {len(self.topics.get("en", []))}"""
 
     def log(self):
         if self._logged:

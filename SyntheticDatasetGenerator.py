@@ -14,41 +14,34 @@ from llama_cpp import Llama
 
 class SyntheticDatasetGenerator:
 
-    def __init__(self,logger, model_path: str, output_path: str, total_samples: int, n_ctx: int, n_threads: int, n_batch: int,
-                 seed: int, language: str, n_gpu_layers: int, max_tokens: int, shard_size: int,
-                 checkpoint_interval: int, max_attempts_multiplier: int, min_user_words: int,
-                 max_user_words: int, min_assistant_words: int, max_assistant_words: int,
-                 min_quality_score: int, temperature: float, top_p: float, min_p: float,
-                 repeat_penalty: float, retry_count: int, enable_quality_judge: bool,
-                 judge_model_path: Optional[str], export_final: bool, cleanup_shards: bool,
-                 multi_turn: bool, min_turns: int, max_turns: int,
-                 topics: List[str]):
+    def __init__(self,logger, cfg):
         self.logger=logger
-        self.model_path = model_path
-        self.output_path = output_path
-        self.total_samples = int(total_samples)
-        self.n_ctx = int(n_ctx)
-        self.n_threads = int(n_threads)
-        self.n_batch = int(n_batch)
-        self.seed = int(seed)
-        self.language = language.lower().strip()
-        self.n_gpu_layers = int(n_gpu_layers)
-        self.max_tokens = int(max_tokens)
-        self.shard_size = int(shard_size)
-        self.checkpoint_interval = int(checkpoint_interval)
-        self.max_attempts = max(1, self.total_samples * int(max_attempts_multiplier))
-        self.min_user_words = int(min_user_words)
-        self.max_user_words = int(max_user_words)
-        self.min_assistant_words = int(min_assistant_words)
-        self.max_assistant_words = int(max_assistant_words)
-        self.min_quality_score = int(min_quality_score)
-        self.temperature = float(temperature)
-        self.top_p = float(top_p)
-        self.min_p = float(min_p)
-        self.repeat_penalty = float(repeat_penalty)
-        self.retry_count = int(retry_count)
-        self.enable_quality_judge = bool(enable_quality_judge)
-        self.judge_model_path = judge_model_path
+        self.configs=cfg
+        self.model_path = self.configs.model_path
+        self.output_path = self.configs.output_path
+        self.total_samples = int(self.configs.total_samples)
+        self.n_ctx = int(self.configs.n_ctx)
+        self.n_threads = int(self.configs.n_threads)
+        self.n_batch = int(self.configs.n_batch)
+        self.seed = int(self.configs.seed)
+        self.language = self.configs.language.lower().strip()
+        self.n_gpu_layers = int(self.configs.n_gpu_layers)
+        self.max_tokens = int(self.configs.max_tokens)
+        self.shard_size = int(self.configs.shard_size)
+        self.checkpoint_interval = int(self.configs.checkpoint_interval)
+        self.max_attempts = max(1, self.total_samples * int(self.configs.max_attempts_multiplier))
+        self.min_user_words = int(self.configs.min_user_words)
+        self.max_user_words = int(self.configs.max_user_words)
+        self.min_assistant_words = int(self.configs.min_assistant_words)
+        self.max_assistant_words = int(self.configs.max_assistant_words)
+        self.min_quality_score = int(self.configs.min_quality_score)
+        self.temperature = float(self.configs.temperature)
+        self.top_p = float(self.configs.top_p)
+        self.min_p = float(self.configs.min_p)
+        self.repeat_penalty = float(self.configs.repeat_penalty)
+        self.retry_count = int(self.configs.retry_count)
+        self.enable_quality_judge = bool(self.configs.enable_quality_judge)
+        self.judge_model_path = self.configs.judge_model_path
         self.random = random.Random(self.seed)
         self.llm = None
         self.judge_llm = None
@@ -85,21 +78,25 @@ class SyntheticDatasetGenerator:
             }
         }
 
+        self.use_mmap = self.configs.load_model_use_mmap,
+        self.use_mlock = self.configs.load_model_use_mlock
+        self.verbose = self.configs.load_model_verbose
+
         if self.language not in self.language_configs:
             raise ValueError(f"Unsupported language: {self.language}")
 
-        self.config = self.language_configs[self.language]
-        self.topics = topics
-        self.tasks = self.config["tasks"]
-        self.styles = self.config["styles"]
-        self.audiences = self.config["audiences"]
-        self.question_styles = self.config["question_styles"]
-        self.export_final = export_final
-        self.cleanup_shards = cleanup_shards
+        self.selected_lang_config = self.language_configs[self.language]
+        self.topics = self.configs.topics[self.language]
+        self.tasks = self.selected_lang_config["tasks"]
+        self.styles = self.selected_lang_config["styles"]
+        self.audiences = self.selected_lang_config["audiences"]
+        self.question_styles = self.selected_lang_config["question_styles"]
+        self.export_final = self.configs.export_final
+        self.cleanup_shards = self.configs.cleanup_shards
 
-        self.multi_turn = bool(multi_turn)
-        self.min_turns = int(min_turns)
-        self.max_turns = int(max_turns)
+        self.multi_turn = bool(self.configs.multi_turn)
+        self.min_turns = int(self.configs.min_turns)
+        self.max_turns = int(self.configs.max_turns)
 
         if not isinstance(self.topics, list) or not self.topics:
             raise ValueError("Topics configuration must be a non-empty list")
@@ -142,14 +139,14 @@ class SyntheticDatasetGenerator:
             self.max_turns = 1
 
     def _system_prompt(self) -> str:
-        return f"""You are a professional synthetic instruction-tuning dataset generator.
+        result= f"""You are a professional synthetic instruction-tuning dataset generator.
 
     Do not use reasoning or thinking mode.
     Do not generate <think> or </think> tags.
     Answer directly without hidden reasoning.
 
-    Your target language is {self.config['name']}.
-    {self.config['prompt']}
+    Your target language is {self.selected_lang_config['name']}.
+    {self.selected_lang_config['prompt']}
 
     Generate realistic, diverse, accurate, useful and natural user-assistant conversations.
 
@@ -169,6 +166,8 @@ class SyntheticDatasetGenerator:
     For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts.
 
     Return only valid JSON."""
+        self.logger.info(f"_system_prompt={result}")
+        return result
 
     def load_model(self) -> None:
         self.logger.info(f"Loading generation model: {self.model_path}")
@@ -178,9 +177,9 @@ class SyntheticDatasetGenerator:
             n_threads=self.n_threads,
             n_batch=self.n_batch,
             n_gpu_layers=self.n_gpu_layers,
-            use_mmap=True,
-            use_mlock=False,
-            verbose=True,
+            use_mmap=self.configs.load_model_use_mmap,
+            use_mlock=self.configs.load_model_use_mlock,
+            verbose=self.configs.load_model_verbose,
             seed=self.seed
         )
         self.logger.info("Generation model loaded successfully")
@@ -268,7 +267,7 @@ class SyntheticDatasetGenerator:
 
     def _contains_bad_pattern(self, text: str) -> bool:
         normalized = self._normalize_text(text)
-        return any(self._normalize_text(pattern) in normalized for pattern in self.config["bad_patterns"])
+        return any(self._normalize_text(pattern) in normalized for pattern in self.selected_lang_config["bad_patterns"])
 
     def _repetition_ratio(self, text: str) -> float:
         words = self._words(text)
@@ -431,7 +430,7 @@ class SyntheticDatasetGenerator:
         return f"""/no_think
         {intro_en}
 
-    Target language: {self.config['name']}
+    Target language: {self.selected_lang_config['name']}
     Topic: {topic}
     Task type: {task}
     Difficulty: {difficulty}

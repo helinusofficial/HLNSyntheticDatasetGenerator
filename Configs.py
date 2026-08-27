@@ -158,6 +158,11 @@ class SyntheticDatasetConfig:
     }
 
         self._logged = False
+
+        self.load_model_use_mmap=True,
+        self.load_model_use_mlock=False,
+        self.load_model_verbose=True,
+
         self.config_text = f"""\n{"=" * 70}
  SyntheticDatasetConfig Configuration
  {"=" * 70}
@@ -193,7 +198,14 @@ class SyntheticDatasetConfig:
  Multi_Turn                       : {self.multi_turn}
  Topics_Languages                 : {list(self.topics.keys())}
  Topics_Count_FA                  : {len(self.topics.get("fa", []))}
- Topics_Count_EN                  : {len(self.topics.get("en", []))}"""
+ Topics_Count_EN                  : {len(self.topics.get("en", []))}
+
+ load_model_use_mmap              : {self.load_model_use_mmap}
+ load_model_use_mlock             : {self.load_model_use_mlock}
+ load_model_verbose               : {self.load_model_verbose}
+
+
+"""
 
     def log(self):
         if self._logged:

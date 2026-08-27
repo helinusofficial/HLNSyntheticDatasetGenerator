@@ -17,7 +17,7 @@ def main():
         syntheticDatasetConfig = SyntheticDatasetConfig(logger)
         syntheticDatasetConfig.log()
 
-        generator = SyntheticDatasetGenerator(
+        generator = SyntheticDatasetGenerator(logger,
             model_path=syntheticDatasetConfig.model_path,
             output_path=syntheticDatasetConfig.output_path,
             total_samples=syntheticDatasetConfig.total_samples,

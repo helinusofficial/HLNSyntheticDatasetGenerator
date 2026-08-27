@@ -14,7 +14,7 @@ from llama_cpp import Llama
 
 class SyntheticDatasetGenerator:
 
-    def __init__(self, model_path: str, output_path: str, total_samples: int, n_ctx: int, n_threads: int, n_batch: int,
+    def __init__(self,logger, model_path: str, output_path: str, total_samples: int, n_ctx: int, n_threads: int, n_batch: int,
                  seed: int, language: str, n_gpu_layers: int, max_tokens: int, shard_size: int,
                  checkpoint_interval: int, max_attempts_multiplier: int, min_user_words: int,
                  max_user_words: int, min_assistant_words: int, max_assistant_words: int,
@@ -23,6 +23,7 @@ class SyntheticDatasetGenerator:
                  judge_model_path: Optional[str], export_final: bool, cleanup_shards: bool,
                  multi_turn: bool, min_turns: int, max_turns: int,
                  topics: List[str]):
+        self.logger=logger
         self.model_path = model_path
         self.output_path = output_path
         self.total_samples = int(total_samples)
@@ -170,7 +171,7 @@ class SyntheticDatasetGenerator:
     Return only valid JSON."""
 
     def load_model(self) -> None:
-        print(f"Loading generation model: {self.model_path}")
+        self.logger.info(f"Loading generation model: {self.model_path}")
         self.llm = Llama(
             model_path=self.model_path,
             n_ctx=self.n_ctx,
@@ -182,19 +183,19 @@ class SyntheticDatasetGenerator:
             verbose=True,
             seed=self.seed
         )
-        print("Generation model loaded successfully")
+        self.logger.info("Generation model loaded successfully")
 
     def load_judge_model(self) -> None:
         if not self.enable_quality_judge:
             return
         if not os.path.isfile(self.judge_model_path):
             raise FileNotFoundError(f"Judge model not found: {self.judge_model_path}")
-        print(f"Loading judge model: {self.judge_model_path}")
+        self.logger.info(f"Loading judge model: {self.judge_model_path}")
         self.judge_llm = Llama(model_path=self.judge_model_path,
                                n_ctx=self.n_ctx, n_threads=self.n_threads,
                                n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers,
                                use_mmap=True, use_mlock=False, verbose=True, seed=self.seed + 1000000)
-        print("Judge model loaded successfully")
+        self.logger.info("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
         text = unicodedata.normalize("NFKC", text)
@@ -686,21 +687,21 @@ class SyntheticDatasetGenerator:
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
         prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
-        print(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.retry_count}")
+        self.logger.info(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.retry_count}")
 
         for retry in range(self.retry_count):
             try:
-                print(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
+                self.logger.info(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
 
                 temperature = min(
                     0.95,
                     max(0.55, self.temperature + self.random.uniform(-0.08, 0.08))
                 )
 
-                print()
-                print("=" * 80)
-                print(f"START GENERATION | index={index} | retry={retry + 1}/{self.retry_count}")
-                print("=" * 80)
+                
+                self.logger.info("=" * 80)
+                self.logger.info(f"START GENERATION | index={index} | retry={retry + 1}/{self.retry_count}")
+                self.logger.info("=" * 80)
 
                 generation_start = time.time()
 
@@ -727,7 +728,7 @@ class SyntheticDatasetGenerator:
 
                 stream_ready_time = time.time()
 
-                print(f"Stream ready after: {stream_ready_time - generation_start:.2f} seconds")
+                self.logger.info(f"Stream ready after: {stream_ready_time - generation_start:.2f} seconds")
 
                 raw_parts = []
                 chunk_count = 0
@@ -739,26 +740,26 @@ class SyntheticDatasetGenerator:
                         continue
                     if first_token_time is None:
                         first_token_time = time.time()
-                        print()
-                        print(f"First token after: {first_token_time - generation_start:.2f} seconds")
-                        print("-" * 80)
+                        
+                        self.logger.info(f"First token after: {first_token_time - generation_start:.2f} seconds")
+                        self.logger.info("-" * 80)
 
                     raw_parts.append(content)
                     chunk_count += 1
 
-                    print(content, end="", flush=True)
+                    self.logger.info(content, end="", flush=True)
                 generation_end = time.time()
                 raw = "".join(raw_parts).strip()
                 total_time = generation_end - generation_start
-                print()
-                print("-" * 80)
+                
+                self.logger.info("-" * 80)
                 if first_token_time:
                     first_token_delay = first_token_time - generation_start
                 else:
                     first_token_delay = total_time
                 generation_only_time = max(0.001,generation_end - (first_token_time or generation_start))
                 speed = chunk_count / generation_only_time
-                print(
+                self.logger.info(
                     f"   GENERATION STATS\n"
                     f"   Total time       : {total_time:.2f} sec\n"
                     f"   First token      : {first_token_delay:.2f} sec\n"
@@ -767,48 +768,48 @@ class SyntheticDatasetGenerator:
                     f"   Output chars     : {len(raw)}"
                 )
 
-                print("=" * 80)
-                print()
+                self.logger.info("=" * 80)
+                
 
                 try:
                     sample = json.loads(raw)
                 except json.JSONDecodeError:
                     self.stats["json_failed"] += 1
-                    print(f"JSON parsing failed: index={index}, retry={retry + 1}")
+                    self.logger.info(f"JSON parsing failed: index={index}, retry={retry + 1}")
                     continue
 
                 valid, _ = self._validate_structure(sample)
                 if not valid:
                     self.stats["validation_failed"] += 1
-                    print(f"Structure validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(f"Structure validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 sample = self._normalize_sample(sample)
                 valid, _ = self._validate_language(sample)
                 if not valid:
                     self.stats["language_failed"] += 1
-                    print(f"Language validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if self._quality_score(sample) < self.min_quality_score:
                     self.stats["quality_failed"] += 1
-                    print(f"Quality validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if not self._judge(sample):
                     self.stats["quality_failed"] += 1
-                    print(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
+                    self.logger.info(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
                     continue
 
-                print(f"Sample accepted: index={index}, retry={retry + 1}")
+                self.logger.info(f"Sample accepted: index={index}, retry={retry + 1}")
                 return sample
 
             except Exception as exc:
                 self.stats["generation_failed"] += 1
-                print(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
+                self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
                 self.logger.warning("Generation failure index=%s retry=%s error=%s", index, retry + 1, exc)
 
-        print(f"Sample generation failed after {self.retry_count} retries: index={index}")
+        self.logger.info(f"Sample generation failed after {self.retry_count} retries: index={index}")
         return {}
 
     def _output_dir(self) -> str:
@@ -838,15 +839,15 @@ class SyntheticDatasetGenerator:
             return
         path = self._shard_path(index)
         temporary = f"{path}.tmp"
-        print(f"Saving shard {index}: {path}")
+        self.logger.info(f"Saving shard {index}: {path}")
         Dataset.from_list(samples).to_parquet(temporary)
         os.replace(temporary, path)
-        print(f"Shard {index} saved successfully: {len(samples)} samples")
+        self.logger.info(f"Shard {index} saved successfully: {len(samples)} samples")
 
     def _save_checkpoint(self, next_index: int) -> None:
         state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
         temporary = f"{self._checkpoint_path()}.tmp"
-        print(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
+        self.logger.info(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
         with open(temporary, "w", encoding="utf-8") as f:
             json.dump(state, f, ensure_ascii=False, indent=2)
         os.replace(temporary, self._checkpoint_path())
@@ -856,12 +857,12 @@ class SyntheticDatasetGenerator:
 
         self.start_time = time.time()
 
-        print("=" * 80)
-        print("Starting synthetic dataset generation")
-        print(f"Target samples: {self.total_samples}")
-        print(f"Language: {self.language}")
-        print(f"Output: {self.output_path}")
-        print("=" * 80)
+        self.logger.info("=" * 80)
+        self.logger.info("Starting synthetic dataset generation")
+        self.logger.info(f"Target samples: {self.total_samples}")
+        self.logger.info(f"Language: {self.language}")
+        self.logger.info(f"Output: {self.output_path}")
+        self.logger.info("=" * 80)
 
         self.load_model()
         self.load_judge_model()
@@ -869,7 +870,7 @@ class SyntheticDatasetGenerator:
         existing_shards = self._existing_shards()
 
         if existing_shards:
-            print(f"Found {len(existing_shards)} existing shard(s)")
+            self.logger.info(f"Found {len(existing_shards)} existing shard(s)")
 
         current_shard: List[Dict[str, Any]] = []
         shard_index = len(existing_shards)
@@ -889,7 +890,7 @@ class SyntheticDatasetGenerator:
 
             if signature in self.signatures or user_signature in self.user_signatures:
                 self.stats["duplicate_failed"] += 1
-                print(f"Duplicate sample rejected: index={self.attempts}")
+                self.logger.info(f"Duplicate sample rejected: index={self.attempts}")
                 continue
 
             self.signatures.add(signature)
@@ -901,7 +902,7 @@ class SyntheticDatasetGenerator:
             self.stats["accepted"] = self.accepted
             next_index = self.accepted
 
-            print(
+            self.logger.info(
                 f"Accepted: {self.accepted}/{self.total_samples} "
                 f"| Attempts: {self.attempts}/{self.max_attempts}"
             )
@@ -921,10 +922,10 @@ class SyntheticDatasetGenerator:
 
         elapsed = time.time() - self.start_time
 
-        print("=" * 80)
-        print("Generation finished")
-        print(f"Accepted samples: {self.accepted}")
-        print(f"Total attempts: {self.attempts}")
-        print(f"Elapsed time: {elapsed:.2f} seconds")
-        print(f"Stats: {self.stats}")
-        print("=" * 80)
+        self.logger.info("=" * 80)
+        self.logger.info("Generation finished")
+        self.logger.info(f"Accepted samples: {self.accepted}")
+        self.logger.info(f"Total attempts: {self.attempts}")
+        self.logger.info(f"Elapsed time: {elapsed:.2f} seconds")
+        self.logger.info(f"Stats: {self.stats}")
+        self.logger.info("=" * 80)

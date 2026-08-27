@@ -1,11 +1,11 @@
 class SyntheticDatasetConfig:
-    model_path = r"L:\models\Qwen3-8B-Q6_K.gguf"
+    model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
     output_path = r"./dataset/synthetic.parquet"
-    total_samples = 5
+    total_samples = 1
     n_ctx = 2048
     n_threads = 8
-    n_batch = 64
-    max_tokens = 384
+    n_batch = 256
+    max_tokens = 256
 
     n_gpu_layers = 0
     seed = 42
@@ -29,9 +29,9 @@ class SyntheticDatasetConfig:
     export_final = True
     cleanup_shards = False
 
-    min_turns = 2
-    max_turns = 3
-    multi_turn = True
+    min_turns = 1
+    max_turns = 1
+    multi_turn = False
 
     topics = {
         "fa": [

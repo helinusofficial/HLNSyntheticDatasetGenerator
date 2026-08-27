@@ -141,11 +141,47 @@ class SyntheticDatasetGenerator:
             self.max_turns = 1
 
     def _system_prompt(self) -> str:
-        return f"You are a professional synthetic instruction-tuning dataset generator. Your target language is {self.config['name']}. {self.config['prompt']} Generate realistic, diverse, accurate, useful and natural user-assistant conversations. Avoid artificial prompts, repetitive templates, generic filler, fabricated information, unnecessary verbosity, meta commentary, references to the dataset, references to generation instructions, and statements about being an AI. For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts. Return only valid JSON."
+        return f"""You are a professional synthetic instruction-tuning dataset generator.
+
+    Do not use reasoning or thinking mode.
+    Do not generate <think> or </think> tags.
+    Answer directly without hidden reasoning.
+
+    Your target language is {self.config['name']}.
+    {self.config['prompt']}
+
+    Generate realistic, diverse, accurate, useful and natural user-assistant conversations.
+
+    Avoid:
+    - artificial prompts
+    - repetitive templates
+    - generic filler
+    - fabricated information
+    - unnecessary verbosity
+    - meta commentary
+    - references to the dataset
+    - references to generation instructions
+    - statements about being an AI
+    - reasoning traces
+    - chain-of-thought
+
+    For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts.
+
+    Return only valid JSON."""
 
     def load_model(self) -> None:
         print(f"Loading generation model: {self.model_path}")
-        self.llm = Llama(model_path=self.model_path, n_ctx=self.n_ctx, n_threads=self.n_threads, n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers, use_mmap=True, use_mlock=False, verbose=False, seed=self.seed)
+        self.llm = Llama(
+            model_path=self.model_path,
+            n_ctx=self.n_ctx,
+            n_threads=self.n_threads,
+            n_batch=self.n_batch,
+            n_gpu_layers=self.n_gpu_layers,
+            use_mmap=True,
+            use_mlock=False,
+            verbose=True,
+            seed=self.seed
+        )
         print("Generation model loaded successfully")
 
     def load_judge_model(self) -> None:
@@ -154,7 +190,10 @@ class SyntheticDatasetGenerator:
         if not os.path.isfile(self.judge_model_path):
             raise FileNotFoundError(f"Judge model not found: {self.judge_model_path}")
         print(f"Loading judge model: {self.judge_model_path}")
-        self.judge_llm = Llama(model_path=self.judge_model_path, n_ctx=self.n_ctx, n_threads=self.n_threads, n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers, use_mmap=True, use_mlock=False, verbose=False, seed=self.seed + 1000000)
+        self.judge_llm = Llama(model_path=self.judge_model_path,
+                               n_ctx=self.n_ctx, n_threads=self.n_threads,
+                               n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers,
+                               use_mmap=True, use_mlock=False, verbose=True, seed=self.seed + 1000000)
         print("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
@@ -337,7 +376,8 @@ class SyntheticDatasetGenerator:
     """
 
         if self.language == "fa":
-            return f"""{intro_fa}
+            return f"""/no_think
+            {intro_fa}
 
     زبان هدف: فارسی
     موضوع: {topic}
@@ -387,7 +427,8 @@ class SyntheticDatasetGenerator:
     {"در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..." if self.multi_turn else "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant."}
     """
 
-        return f"""{intro_en}
+        return f"""/no_think
+        {intro_en}
 
     Target language: {self.config['name']}
     Topic: {topic}
@@ -651,9 +692,83 @@ class SyntheticDatasetGenerator:
             try:
                 print(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
 
-                temperature = min(0.95, max(0.55, self.temperature + self.random.uniform(-0.08, 0.08)))
-                result = self.llm.create_chat_completion(messages=[{"role": "system", "content": self._system_prompt()}, {"role": "user", "content": prompt}], temperature=temperature, top_p=self.top_p, min_p=self.min_p, repeat_penalty=self.repeat_penalty, max_tokens=self.max_tokens, response_format={"type": "json_object"}, seed=self.seed + index * 100 + retry)
-                raw = result["choices"][0]["message"]["content"].strip()
+                temperature = min(
+                    0.95,
+                    max(0.55, self.temperature + self.random.uniform(-0.08, 0.08))
+                )
+
+                print()
+                print("=" * 80)
+                print(f"START GENERATION | index={index} | retry={retry + 1}/{self.retry_count}")
+                print("=" * 80)
+
+                generation_start = time.time()
+
+                stream = self.llm.create_chat_completion(
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": self._system_prompt()
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    temperature=temperature,
+                    top_p=self.top_p,
+                    min_p=self.min_p,
+                    repeat_penalty=self.repeat_penalty,
+                    max_tokens=self.max_tokens,
+                    response_format={"type": "json_object"},
+                    seed=self.seed + index * 100 + retry,
+                    stream=True,
+                )
+
+                stream_ready_time = time.time()
+
+                print(f"Stream ready after: {stream_ready_time - generation_start:.2f} seconds")
+
+                raw_parts = []
+                chunk_count = 0
+                first_token_time = None
+
+                for chunk in stream:
+                    content = chunk["choices"][0]["delta"].get("content", "")
+                    if not content:
+                        continue
+                    if first_token_time is None:
+                        first_token_time = time.time()
+                        print()
+                        print(f"First token after: {first_token_time - generation_start:.2f} seconds")
+                        print("-" * 80)
+
+                    raw_parts.append(content)
+                    chunk_count += 1
+
+                    print(content, end="", flush=True)
+                generation_end = time.time()
+                raw = "".join(raw_parts).strip()
+                total_time = generation_end - generation_start
+                print()
+                print("-" * 80)
+                if first_token_time:
+                    first_token_delay = first_token_time - generation_start
+                else:
+                    first_token_delay = total_time
+                generation_only_time = max(0.001,generation_end - (first_token_time or generation_start))
+                speed = chunk_count / generation_only_time
+                print(
+                    f"   GENERATION STATS\n"
+                    f"   Total time       : {total_time:.2f} sec\n"
+                    f"   First token      : {first_token_delay:.2f} sec\n"
+                    f"   Chunks           : {chunk_count}\n"
+                    f"   Approx speed     : {speed:.2f} chunks/sec\n"
+                    f"   Output chars     : {len(raw)}"
+                )
+
+                print("=" * 80)
+                print()
 
                 try:
                     sample = json.loads(raw)

@@ -237,59 +237,23 @@ class SyntheticDatasetGenerator:
     def _build_prompt(self, topic: str, task: str, style: str, difficulty: str,
                       audience: str, question_style: str, index: int) -> str:
 
-        if self.configs.multi_turn:
-            intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
-            intro_en = "Generate a high-quality multi-turn instruction-tuning example."
+        mode = "multi" if self.configs.multi_turn else "single"
+        prompt_config = self.configs.prompt_config[self.configs.language]
 
-            turn_instruction_fa = f"""
-    یک گفت‌وگوی چندمرحله‌ای تولید کن.
+        intro = prompt_config["intro"][mode]
 
-    تعداد نوبت‌های گفت‌وگو باید بین {self.configs.min_turns} و {self.configs.max_turns} نوبت باشد.
-    هر نوبت شامل یک پیام user و یک پیام assistant است.
+        turn_instruction = prompt_config["turn_instruction"][mode].format(
+            min_turns=self.configs.min_turns,
+            max_turns=self.configs.max_turns
+        )
 
-    گفت‌وگو باید پیوستگی معنایی داشته باشد.
-    هر پیام user بعدی باید بر اساس پاسخ قبلی یا context مکالمه شکل بگیرد.
-    کاربر نباید بدون ارتباط موضوع را تغییر دهد.
-    در برخی نوبت‌ها می‌توان از ارجاع‌های طبیعی مانند «این مورد»، «همین راهکار»، «اگر این‌طور باشد» و موارد مشابه استفاده کرد.
-    دستیار باید تمام context قبلی مکالمه را در نظر بگیرد.
-    از تکرار سؤال یا پاسخ قبلی خودداری کن.
-    مکالمه باید شبیه یک گفت‌وگوی واقعی و طبیعی باشد.
-    """
-
-            turn_instruction_en = f"""
-    Generate a multi-turn conversation.
-
-    The conversation must contain between {self.configs.min_turns} and {self.configs.max_turns} turns.
-    Each turn consists of one user message followed by one assistant message.
-
-    The conversation must maintain semantic continuity.
-    Each following user message should naturally build on previous answers or conversation context.
-    Do not abruptly switch to unrelated topics.
-    Some user messages may naturally refer to previous context.
-    The assistant must consider the full conversation history when responding.
-    Avoid repeating previous questions or answers.
-    The conversation must feel realistic and natural.
-    """
-
-        else:
-            intro_fa = "یک نمونه تک‌مرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
-            intro_en = "Generate a high-quality single-turn instruction-tuning example."
-
-            turn_instruction_fa = """
-    فقط یک نوبت سؤال و پاسخ تولید کن.
-
-    خروجی باید دقیقاً شامل یک پیام user و یک پیام assistant باشد.
-    """
-
-            turn_instruction_en = """
-    Generate exactly one user message followed by one assistant message.
-
-    The output must contain exactly two messages.
-    """
+        instructions = prompt_config["instructions"]
+        output = prompt_config["output"]
+        continuation = prompt_config["continuation"][mode]
 
         if self.configs.language == "fa":
             return f"""/no_think
-            {intro_fa}
+            {intro}
 
     زبان هدف: فارسی
     موضوع: {topic}
@@ -300,47 +264,17 @@ class SyntheticDatasetGenerator:
     نوع سؤال: {question_style}
     شناسه تنوع: {index}
 
-    {turn_instruction_fa}
+    {turn_instruction}
 
-    سؤال‌ها باید کاملاً طبیعی و شبیه سؤال‌هایی باشند که یک فارسی‌زبان واقعی می‌پرسد.
-    پاسخ‌های دستیار باید دقیق، مفید، مرتبط، روان و متناسب با context مکالمه باشند.
+    {instructions}
 
-    از ترجمه تحت‌اللفظی انگلیسی خودداری کن.
-    از ساختارهای تکراری و کلیشه‌ای استفاده نکن.
-    پاسخ‌ها را با عبارت‌هایی مانند «حتماً»، «البته»، «امیدوارم این پاسخ مفید باشد» به شکل تکراری شروع یا تمام نکن.
+    {output}
 
-    در متن فارسی:
-    - از «ی» و «ک» فارسی استفاده کن.
-    - از نیم‌فاصله در موارد مناسب مانند «می‌شود»، «می‌کند»، «داده‌ها»، «نرم‌افزارها» و «بهینه‌سازی» استفاده کن.
-    - از علائم نگارشی فارسی مانند «،»، «؛» و «؟» طبیعی استفاده کن.
-
-    واژه‌های انگلیسی فقط برای اصطلاح تخصصی، نام فناوری، نام محصول، کد، زبان برنامه‌نویسی یا نام خاص مجاز هستند.
-
-    برای موضوعات پزشکی فقط اطلاعات عمومی و آموزشی ارائه کن و تشخیص، نسخه یا تصمیم درمانی شخصی ارائه نکن.
-
-    برای مسائل استدلالی، نتیجه و توضیح لازم برای درک پاسخ را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
-
-    خروجی فقط JSON معتبر باشد.
-
-    ساختار خروجی:
-    {{
-      "messages": [
-        {{
-          "role": "user",
-          "content": "..."
-        }},
-        {{
-          "role": "assistant",
-          "content": "..."
-        }}
-      ]
-    }}
-
-    {"در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..." if self.configs.multi_turn else "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant."}
+    {continuation}
     """
 
         return f"""/no_think
-        {intro_en}
+        {intro}
 
     Target language: {self.selected_lang_config['name']}
     Topic: {topic}
@@ -351,30 +285,13 @@ class SyntheticDatasetGenerator:
     Question style: {question_style}
     Variation ID: {index}
 
-    {turn_instruction_en}
+    {turn_instruction}
 
-    The user messages must be realistic and natural.
-    The assistant responses must be accurate, useful, relevant and complete.
+    {instructions}
 
-    Avoid repetitive structures, generic filler, artificial benchmark prompts and meta commentary.
+    {output}
 
-    Return only valid JSON.
-
-    Expected structure:
-    {{
-      "messages": [
-        {{
-          "role": "user",
-          "content": "..."
-        }},
-        {{
-          "role": "assistant",
-          "content": "..."
-        }}
-      ]
-    }}
-
-    {"For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..." if self.configs.multi_turn else "For single-turn mode, return exactly two messages: user → assistant."}
+    {continuation}
     """
 
     def _validate_structure(self, sample: Any) -> Tuple[bool, str]:
@@ -568,24 +485,29 @@ class SyntheticDatasetGenerator:
     def _judge(self, sample: Dict[str, Any]) -> bool:
         if not self.configs.enable_quality_judge:
             return True
-        prompt = f"""این نمونه دیتاست instruction-tuning را از نظر کیفیت بررسی کن.
-
-فقط JSON معتبر برگردان:
-{{
-  "score": 0,
-  "relevant": true,
-  "accurate": true,
-  "natural": true,
-  "complete": true,
-  "acceptable": true
-}}
-
-نمونه:
-{json.dumps(sample, ensure_ascii=False)}"""
+        prompt = self.configs.judge_config["user_prompt"].format(sample=json.dumps(sample, ensure_ascii=False))
         try:
-            result = self.judge_llm.create_chat_completion(messages=[{"role": "system", "content": "You are a strict dataset quality evaluator. Return only valid JSON."}, {"role": "user", "content": prompt}], temperature=0.1, top_p=0.9, max_tokens=200, response_format={"type": "json_object"}, seed=self.configs.seed + self.accepted)
+            result = self.judge_llm.create_chat_completion(
+                messages=[
+                    {
+                        "role": "system",
+                        "content": self.configs.judge_config["system_prompt"]
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                temperature=self.configs.judge_config["temperature"],
+                top_p=self.configs.judge_config["top_p"],
+                max_tokens=self.configs.judge_config["max_tokens"],
+                response_format=self.configs.judge_config["response_format"],
+                seed=self.configs.seed + self.accepted
+            )
+
             judgment = json.loads(result["choices"][0]["message"]["content"].strip())
-            return bool(judgment.get("acceptable", False)) and int(judgment.get("score", 0)) >= self.configs.min_quality_score
+            return (bool(judgment.get("acceptable", False)) and int(judgment.get("score", 0)) >= self.configs.min_quality_score)
+
         except Exception as exc:
             self.logger.warning("Judge failure: %s", exc)
             return False
@@ -594,24 +516,49 @@ class SyntheticDatasetGenerator:
         topic = self.random.choice(self.topics)
         task = self.random.choice(self.tasks)
         style = self.random.choice(self.styles)
-        difficulty = self.random.choice(["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.configs.language == "fa" else ["Beginner", "Intermediate", "Advanced", "Expert"])
+        difficulty = self.random.choice(self.configs.difficulties[self.configs.language])
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
-        prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
-        self.logger.info(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.configs.retry_count}")
+
+        prompt = self._build_prompt(
+            topic,
+            task,
+            style,
+            difficulty,
+            audience,
+            question_style,
+            index
+        )
+
+        self.logger.info(
+            f"Generating sample: index={index}, topic={topic}, "
+            f"task={task}, retry_count={self.configs.retry_count}"
+        )
 
         for retry in range(self.configs.retry_count):
             try:
-                self.logger.info(f"Generation attempt: index={index}, retry={retry + 1}/{self.configs.retry_count}")
-
-                temperature = min(
-                    0.95,
-                    max(0.55, self.configs.temperature + self.random.uniform(-0.08, 0.08))
+                self.logger.info(
+                    f"Generation attempt: index={index}, "
+                    f"retry={retry + 1}/{self.configs.retry_count}"
                 )
 
-                
+                temperature = min(
+                    self.configs.generation_config["temperature_max"],
+                    max(
+                        self.configs.generation_config["temperature_min"],
+                        self.configs.temperature
+                        + self.random.uniform(
+                            -self.configs.generation_config["temperature_variation"],
+                            self.configs.generation_config["temperature_variation"]
+                        )
+                    )
+                )
+
                 self.logger.info("=" * 80)
-                self.logger.info(f"START GENERATION | index={index} | retry={retry + 1}/{self.configs.retry_count}")
+                self.logger.info(
+                    f"START GENERATION | index={index} | "
+                    f"retry={retry + 1}/{self.configs.retry_count}"
+                )
                 self.logger.info("=" * 80)
 
                 generation_start = time.time()
@@ -636,14 +583,17 @@ class SyntheticDatasetGenerator:
                     min_p=self.configs.min_p,
                     repeat_penalty=self.configs.repeat_penalty,
                     max_tokens=self.configs.max_tokens,
-                    response_format={"type": "json_object"},
+                    response_format=self.configs.generation_config["response_format"],
                     seed=self.configs.seed + index * 100 + retry,
                     stream=True,
                 )
 
                 stream_ready_time = time.time()
 
-                self.logger.info(f"Stream ready after: {stream_ready_time - generation_start:.2f} seconds")
+                self.logger.info(
+                    f"Stream ready after: "
+                    f"{stream_ready_time - generation_start:.2f} seconds"
+                )
 
                 raw_parts = []
                 chunk_count = 0
@@ -651,29 +601,42 @@ class SyntheticDatasetGenerator:
 
                 for chunk in stream:
                     content = chunk["choices"][0]["delta"].get("content", "")
+
                     if not content:
                         continue
+
                     if first_token_time is None:
                         first_token_time = time.time()
-                        
-                        self.logger.info(f"First token after: {first_token_time - generation_start:.2f} seconds")
+
+                        self.logger.info(
+                            f"First token after: "
+                            f"{first_token_time - generation_start:.2f} seconds"
+                        )
                         self.logger.info("-" * 80)
 
                     raw_parts.append(content)
                     chunk_count += 1
 
                     self.logger.info(content, end="", flush=True)
+
                 generation_end = time.time()
                 raw = "".join(raw_parts).strip()
                 total_time = generation_end - generation_start
-                
+
                 self.logger.info("-" * 80)
+
                 if first_token_time:
                     first_token_delay = first_token_time - generation_start
                 else:
                     first_token_delay = total_time
-                generation_only_time = max(0.001,generation_end - (first_token_time or generation_start))
+
+                generation_only_time = max(
+                    0.001,
+                    generation_end - (first_token_time or generation_start)
+                )
+
                 speed = chunk_count / generation_only_time
+
                 self.logger.info(
                     f"   GENERATION STATS\n"
                     f"   Total time       : {total_time:.2f} sec\n"
@@ -684,47 +647,82 @@ class SyntheticDatasetGenerator:
                 )
 
                 self.logger.info("=" * 80)
-                
 
                 try:
                     sample = json.loads(raw)
+
                 except json.JSONDecodeError:
                     self.configs.stats["json_failed"] += 1
-                    self.logger.info(f"JSON parsing failed: index={index}, retry={retry + 1}")
+                    self.logger.info(
+                        f"JSON parsing failed: "
+                        f"index={index}, retry={retry + 1}"
+                    )
                     continue
 
                 valid, _ = self._validate_structure(sample)
+
                 if not valid:
                     self.configs.stats["validation_failed"] += 1
-                    self.logger.info(f"Structure validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(
+                        f"Structure validation failed: "
+                        f"index={index}, retry={retry + 1}"
+                    )
                     continue
 
                 sample = self._normalize_sample(sample)
+
                 valid, _ = self._validate_language(sample)
+
                 if not valid:
                     self.configs.stats["language_failed"] += 1
-                    self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(
+                        f"Language validation failed: "
+                        f"index={index}, retry={retry + 1}"
+                    )
                     continue
 
                 if self._quality_score(sample) < self.configs.min_quality_score:
                     self.configs.stats["quality_failed"] += 1
-                    self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
+                    self.logger.info(
+                        f"Quality validation failed: "
+                        f"index={index}, retry={retry + 1}"
+                    )
                     continue
 
                 if not self._judge(sample):
                     self.configs.stats["quality_failed"] += 1
-                    self.logger.info(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
+                    self.logger.info(
+                        f"Quality judge rejected sample: "
+                        f"index={index}, retry={retry + 1}"
+                    )
                     continue
 
-                self.logger.info(f"Sample accepted: index={index}, retry={retry + 1}")
+                self.logger.info(
+                    f"Sample accepted: index={index}, retry={retry + 1}"
+                )
+
                 return sample
 
             except Exception as exc:
                 self.configs.stats["generation_failed"] += 1
-                self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
-                self.logger.warning("Generation failure index=%s retry=%s error=%s", index, retry + 1, exc)
 
-        self.logger.info(f"Sample generation failed after {self.configs.retry_count} retries: index={index}")
+                self.logger.info(
+                    f"Generation error: index={index}, "
+                    f"retry={retry + 1}, error={exc}"
+                )
+
+                self.logger.warning(
+                    "Generation failure index=%s retry=%s error=%s",
+                    index,
+                    retry + 1,
+                    exc
+                )
+
+        self.logger.info(
+            f"Sample generation failed after "
+            f"{self.configs.retry_count} retries: index={index}"
+        )
+
         return {}
 
     def _output_dir(self) -> str:

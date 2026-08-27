@@ -236,6 +236,179 @@ class SyntheticDatasetConfig:
 
         Return only valid JSON.
         """
+        self.intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
+        self.intro_en = "Generate a high-quality multi-turn instruction-tuning example."
+        self.prompt_config = {
+            "fa": {
+                "intro": {
+                    "single": "یک نمونه تک‌مرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن.",
+                    "multi": "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
+                },
+
+                "turn_instruction": {
+                    "single": """
+        فقط یک نوبت سؤال و پاسخ تولید کن.
+
+        خروجی باید دقیقاً شامل یک پیام user و یک پیام assistant باشد.
+        """,
+                    "multi": """
+        یک گفت‌وگوی چندمرحله‌ای تولید کن.
+
+        تعداد نوبت‌های گفت‌وگو باید بین {min_turns} و {max_turns} نوبت باشد.
+        هر نوبت شامل یک پیام user و یک پیام assistant است.
+
+        گفت‌وگو باید پیوستگی معنایی داشته باشد.
+        هر پیام user بعدی باید بر اساس پاسخ قبلی یا context مکالمه شکل بگیرد.
+        کاربر نباید بدون ارتباط موضوع را تغییر دهد.
+        در برخی نوبت‌ها می‌توان از ارجاع‌های طبیعی مانند «این مورد»، «همین راهکار»، «اگر این‌طور باشد» و موارد مشابه استفاده کرد.
+        دستیار باید تمام context قبلی مکالمه را در نظر بگیرد.
+        از تکرار سؤال یا پاسخ قبلی خودداری کن.
+        مکالمه باید شبیه یک گفت‌وگوی واقعی و طبیعی باشد.
+        """
+                },
+
+                "instructions": """
+        سؤال‌ها باید کاملاً طبیعی و شبیه سؤال‌هایی باشند که یک فارسی‌زبان واقعی می‌پرسد.
+        پاسخ‌های دستیار باید دقیق، مفید، مرتبط، روان و متناسب با context مکالمه باشند.
+
+        از ترجمه تحت‌اللفظی انگلیسی خودداری کن.
+        از ساختارهای تکراری و کلیشه‌ای استفاده نکن.
+        پاسخ‌ها را با عبارت‌هایی مانند «حتماً»، «البته»، «امیدوارم این پاسخ مفید باشد» به شکل تکراری شروع یا تمام نکن.
+
+        در متن فارسی:
+        - از «ی» و «ک» فارسی استفاده کن.
+        - از نیم‌فاصله در موارد مناسب مانند «می‌شود»، «می‌کند»، «داده‌ها»، «نرم‌افزارها» و «بهینه‌سازی» استفاده کن.
+        - از علائم نگارشی فارسی مانند «،»، «؛» و «؟» طبیعی استفاده کن.
+
+        واژه‌های انگلیسی فقط برای اصطلاح تخصصی، نام فناوری، نام محصول، کد، زبان برنامه‌نویسی یا نام خاص مجاز هستند.
+
+        برای موضوعات پزشکی فقط اطلاعات عمومی و آموزشی ارائه کن و تشخیص، نسخه یا تصمیم درمانی شخصی ارائه نکن.
+
+        برای مسائل استدلالی، نتیجه و توضیح لازم برای درک پاسخ را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
+        """,
+
+                "output": """
+        خروجی فقط JSON معتبر باشد.
+
+        ساختار خروجی:
+        {{
+          "messages": [
+            {{
+              "role": "user",
+              "content": "..."
+            }},
+            {{
+              "role": "assistant",
+              "content": "..."
+            }}
+          ]
+        }}
+        """,
+
+                "continuation": {
+                    "single": "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant.",
+                    "multi": "در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..."
+                }
+            },
+
+            "en": {
+                "intro": {
+                    "single": "Generate a high-quality single-turn instruction-tuning example.",
+                    "multi": "Generate a high-quality multi-turn instruction-tuning example."
+                },
+
+                "turn_instruction": {
+                    "single": """
+        Generate exactly one user message followed by one assistant message.
+
+        The output must contain exactly two messages.
+        """,
+                    "multi": """
+        Generate a multi-turn conversation.
+
+        The conversation must contain between {min_turns} and {max_turns} turns.
+        Each turn consists of one user message followed by one assistant message.
+
+        The conversation must maintain semantic continuity.
+        Each following user message should naturally build on previous answers or conversation context.
+        Do not abruptly switch to unrelated topics.
+        Some user messages may naturally refer to previous context.
+        The assistant must consider the full conversation history when responding.
+        Avoid repeating previous questions or answers.
+        The conversation must feel realistic and natural.
+        """
+                },
+
+                "instructions": """
+        The user messages must be realistic and natural.
+        The assistant responses must be accurate, useful, relevant and complete.
+
+        Avoid repetitive structures, generic filler, artificial benchmark prompts and meta commentary.
+        """,
+
+                "output": """
+        Return only valid JSON.
+
+        Expected structure:
+        {{
+          "messages": [
+            {{
+              "role": "user",
+              "content": "..."
+            }},
+            {{
+              "role": "assistant",
+              "content": "..."
+            }}
+          ]
+        }}
+        """,
+
+                "continuation": {
+                    "single": "For single-turn mode, return exactly two messages: user → assistant.",
+                    "multi": "For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..."
+                }
+            }
+        }
+        self.judge_config = {
+            "system_prompt": "You are a strict dataset quality evaluator. Return only valid JSON.",
+
+            "user_prompt": """
+        این نمونه دیتاست instruction-tuning را از نظر کیفیت بررسی کن.
+
+        فقط JSON معتبر برگردان:
+        {{
+          "score": 0,
+          "relevant": true,
+          "accurate": true,
+          "natural": true,
+          "complete": true,
+          "acceptable": true
+        }}
+
+        نمونه:
+        {sample}
+        """,
+
+            "temperature": 0.1,
+            "top_p": 0.9,
+            "max_tokens": 200,
+            "response_format": {
+                "type": "json_object"
+            }
+        }
+        self.difficulties = {
+            "fa": ["مبتدی", "متوسط", "پیشرفته", "تخصصی"],
+            "en": ["Beginner", "Intermediate", "Advanced", "Expert"]
+        }
+        self.generation_config = {
+            "temperature_min": 0.55,
+            "temperature_max": 0.95,
+            "temperature_variation": 0.08,
+            "response_format": {
+                "type": "json_object"
+            }
+        }
         self.config_text = f"""\n{"=" * 70}
  SyntheticDatasetConfig Configuration
  {"=" * 70}

@@ -1,39 +1,43 @@
+
 class SyntheticDatasetConfig:
-    model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
-    output_path = r"./dataset/synthetic.parquet"
-    total_samples = 1
-    n_ctx = 2048
-    n_threads = 8
-    n_batch = 256
-    max_tokens = 256
+    def __init__(self, logger):
+        self.logger=logger
 
-    n_gpu_layers = 0
-    seed = 42
-    language = "fa"
+        self.model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
+        self.output_path = r"./dataset/synthetic.parquet"
+        self.total_samples = 1
+        self.n_ctx = 2048
+        self.n_threads = 8
+        self.n_batch = 256
+        self.max_tokens = 256
 
-    shard_size = 100
-    checkpoint_interval = 50
-    max_attempts_multiplier = 3
-    min_user_words = 3
-    max_user_words = 100
-    min_assistant_words = 10
-    max_assistant_words = 300
-    min_quality_score = 65
-    temperature = 0.75
-    top_p = 0.9
-    min_p = 0.05
-    repeat_penalty = 1.08
-    retry_count = 1
-    enable_quality_judge = False
-    judge_model_path = None
-    export_final = True
-    cleanup_shards = False
+        self.n_gpu_layers = 0
+        self.seed = 42
+        self.language = "fa"
 
-    min_turns = 1
-    max_turns = 1
-    multi_turn = False
+        self.shard_size = 100
+        self.checkpoint_interval = 50
+        self.max_attempts_multiplier = 3
+        self.min_user_words = 3
+        self.max_user_words = 100
+        self.min_assistant_words = 10
+        self.max_assistant_words = 300
+        self.min_quality_score = 65
+        self.temperature = 0.75
+        self.top_p = 0.9
+        self.min_p = 0.05
+        self.repeat_penalty = 1.08
+        self.retry_count = 1
+        self.enable_quality_judge = False
+        self.judge_model_path = None
+        self.export_final = True
+        self.cleanup_shards = False
 
-    topics = {
+        self.min_turns = 1
+        self.max_turns = 1
+        self.multi_turn = False
+
+        self.topics = {
         "fa": [
             "هوش مصنوعی",
             "یادگیری ماشین",
@@ -152,3 +156,50 @@ class SyntheticDatasetConfig:
             "Internet of Things"
         ]
     }
+
+        self._logged = False
+        self.config_text = f"""
+        {"=" * 70}
+        SyntheticDatasetConfig Configuration
+        {"=" * 70}
+         Model_Path                       : {self.model_path}
+         Output_Path                      : {self.output_path}
+         Total_Samples                    : {self.total_samples}
+         N_Context                        : {self.n_ctx}
+         N_Threads                        : {self.n_threads}
+         N_Batch                          : {self.n_batch}
+         Max_Tokens                       : {self.max_tokens}
+         N_GPU_Layers                     : {self.n_gpu_layers}
+         Seed                             : {self.seed}
+         Language                         : {self.language}
+         Shard_Size                       : {self.shard_size}
+         Checkpoint_Interval              : {self.checkpoint_interval}
+         Max_Attempts_Multiplier          : {self.max_attempts_multiplier}
+         Min_User_Words                   : {self.min_user_words}
+         Max_User_Words                   : {self.max_user_words}
+         Min_Assistant_Words              : {self.min_assistant_words}
+         Max_Assistant_Words              : {self.max_assistant_words}
+         Min_Quality_Score                : {self.min_quality_score}
+         Temperature                      : {self.temperature}
+         Top_P                            : {self.top_p}
+         Min_P                            : {self.min_p}
+         Repeat_Penalty                   : {self.repeat_penalty}
+         Retry_Count                      : {self.retry_count}
+         Enable_Quality_Judge             : {self.enable_quality_judge}
+         Judge_Model_Path                 : {self.judge_model_path}
+         Export_Final                     : {self.export_final}
+         Cleanup_Shards                   : {self.cleanup_shards}
+         Min_Turns                        : {self.min_turns}
+         Max_Turns                        : {self.max_turns}
+         Multi_Turn                       : {self.multi_turn}
+         Topics_Languages                 : {list(self.topics.keys())}
+         Topics_Count_FA                  : {len(self.topics.get("fa", []))}
+         Topics_Count_EN                  : {len(self.topics.get("en", []))}
+        {"-" * 103}
+        """
+
+    def log(self):
+        if self._logged:
+            return
+        self.logger.info(self.config_text)
+        self._logged = True

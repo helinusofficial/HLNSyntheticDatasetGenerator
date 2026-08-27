@@ -1,6 +1,5 @@
 from datetime import datetime
 from Utility.MyLogger import MyLogger
-import subprocess
 import time
 from Configs import SyntheticDatasetConfig
 from SyntheticDatasetGenerator import SyntheticDatasetGenerator

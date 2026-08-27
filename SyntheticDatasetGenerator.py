@@ -17,32 +17,11 @@ class SyntheticDatasetGenerator:
     def __init__(self,logger, cfg):
         self.logger=logger
         self.configs=cfg
-        self.model_path = self.configs.model_path
-        self.output_path = self.configs.output_path
-        self.total_samples = int(self.configs.total_samples)
-        self.n_ctx = int(self.configs.n_ctx)
-        self.n_threads = int(self.configs.n_threads)
-        self.n_batch = int(self.configs.n_batch)
-        self.seed = int(self.configs.seed)
+
         self.language = self.configs.language.lower().strip()
-        self.n_gpu_layers = int(self.configs.n_gpu_layers)
-        self.max_tokens = int(self.configs.max_tokens)
-        self.shard_size = int(self.configs.shard_size)
-        self.checkpoint_interval = int(self.configs.checkpoint_interval)
-        self.max_attempts = max(1, self.total_samples * int(self.configs.max_attempts_multiplier))
-        self.min_user_words = int(self.configs.min_user_words)
-        self.max_user_words = int(self.configs.max_user_words)
-        self.min_assistant_words = int(self.configs.min_assistant_words)
-        self.max_assistant_words = int(self.configs.max_assistant_words)
-        self.min_quality_score = int(self.configs.min_quality_score)
-        self.temperature = float(self.configs.temperature)
-        self.top_p = float(self.configs.top_p)
-        self.min_p = float(self.configs.min_p)
-        self.repeat_penalty = float(self.configs.repeat_penalty)
-        self.retry_count = int(self.configs.retry_count)
-        self.enable_quality_judge = bool(self.configs.enable_quality_judge)
-        self.judge_model_path = self.configs.judge_model_path
-        self.random = random.Random(self.seed)
+        self.max_attempts = max(1, self.configs.total_samples * int(self.configs.max_attempts_multiplier))
+
+        self.random = random.Random(self.configs.seed)
         self.llm = None
         self.judge_llm = None
         self.start_time = None
@@ -78,10 +57,6 @@ class SyntheticDatasetGenerator:
             }
         }
 
-        self.use_mmap = self.configs.load_model_use_mmap,
-        self.use_mlock = self.configs.load_model_use_mlock
-        self.verbose = self.configs.load_model_verbose
-
         if self.language not in self.language_configs:
             raise ValueError(f"Unsupported language: {self.language}")
 
@@ -91,12 +66,7 @@ class SyntheticDatasetGenerator:
         self.styles = self.selected_lang_config["styles"]
         self.audiences = self.selected_lang_config["audiences"]
         self.question_styles = self.selected_lang_config["question_styles"]
-        self.export_final = self.configs.export_final
-        self.cleanup_shards = self.configs.cleanup_shards
 
-        self.multi_turn = bool(self.configs.multi_turn)
-        self.min_turns = int(self.configs.min_turns)
-        self.max_turns = int(self.configs.max_turns)
 
         if not isinstance(self.topics, list) or not self.topics:
             raise ValueError("Topics configuration must be a non-empty list")
@@ -104,39 +74,39 @@ class SyntheticDatasetGenerator:
         self.topics = [str(topic).strip() for topic in self.topics if str(topic).strip()]
 
     def _validate_config(self) -> None:
-        if not os.path.isfile(self.model_path):
-            raise FileNotFoundError(f"Model file not found: {self.model_path}")
-        if self.total_samples <= 0:
+        if not os.path.isfile(self.configs.model_path):
+            raise FileNotFoundError(f"Model file not found: {self.configs.model_path}")
+        if self.configs.total_samples <= 0:
             raise ValueError("total_samples must be greater than zero")
-        if self.n_ctx <= 0 or self.n_threads <= 0 or self.n_batch <= 0:
+        if self.configs.n_ctx <= 0 or self.configs.n_threads <= 0 or self.configs.n_batch <= 0:
             raise ValueError("n_ctx, n_threads and n_batch must be greater than zero")
-        if self.max_tokens <= 0:
+        if self.configs.max_tokens <= 0:
             raise ValueError("max_tokens must be greater than zero")
-        if self.shard_size <= 0:
+        if self.configs.shard_size <= 0:
             raise ValueError("shard_size must be greater than zero")
-        if self.checkpoint_interval <= 0:
+        if self.configs.checkpoint_interval <= 0:
             raise ValueError("checkpoint_interval must be greater than zero")
-        if not 0.0 < self.temperature <= 2.0:
+        if not 0.0 < self.configs.temperature <= 2.0:
             raise ValueError("temperature must be between 0 and 2")
-        if not 0.0 < self.top_p <= 1.0:
+        if not 0.0 < self.configs.top_p <= 1.0:
             raise ValueError("top_p must be between 0 and 1")
-        if not 0.0 <= self.min_p <= 1.0:
+        if not 0.0 <= self.configs.min_p <= 1.0:
             raise ValueError("min_p must be between 0 and 1")
-        if self.min_user_words <= 0 or self.max_user_words < self.min_user_words:
+        if self.configs.min_user_words <= 0 or self.configs.max_user_words < self.configs.min_user_words:
             raise ValueError("Invalid user word limits")
-        if self.min_assistant_words <= 0 or self.max_assistant_words < self.min_assistant_words:
+        if self.configs.min_assistant_words <= 0 or self.configs.max_assistant_words < self.configs.min_assistant_words:
             raise ValueError("Invalid assistant word limits")
-        if self.enable_quality_judge and not self.judge_model_path:
+        if self.configs.enable_quality_judge and not self.configs.judge_model_path:
             raise ValueError("judge_model_path is required when enable_quality_judge=True")
-        if self.multi_turn:
-            if self.min_turns <= 1:
+        if self.configs.multi_turn:
+            if self.configs.min_turns <= 1:
                 raise ValueError("multi_turn requires min_turns > 1")
 
-            if self.max_turns < self.min_turns:
+            if self.configs.max_turns < self.configs.min_turns:
                 raise ValueError("max_turns must be greater than or equal to min_turns")
         else:
-            self.min_turns = 1
-            self.max_turns = 1
+            self.configs.min_turns = 1
+            self.configs.max_turns = 1
 
     def _system_prompt(self) -> str:
         result= f"""You are a professional synthetic instruction-tuning dataset generator.
@@ -170,30 +140,30 @@ class SyntheticDatasetGenerator:
         return result
 
     def load_model(self) -> None:
-        self.logger.info(f"Loading generation model: {self.model_path}")
+        self.logger.info(f"Loading generation model: {self.configs.model_path}")
         self.llm = Llama(
-            model_path=self.model_path,
-            n_ctx=self.n_ctx,
-            n_threads=self.n_threads,
-            n_batch=self.n_batch,
-            n_gpu_layers=self.n_gpu_layers,
+            model_path=self.configs.model_path,
+            n_ctx=self.configs.n_ctx,
+            n_threads=self.configs.n_threads,
+            n_batch=self.configs.n_batch,
+            n_gpu_layers=self.configs.n_gpu_layers,
             use_mmap=self.configs.load_model_use_mmap,
             use_mlock=self.configs.load_model_use_mlock,
             verbose=self.configs.load_model_verbose,
-            seed=self.seed
+            seed=self.configs.seed
         )
         self.logger.info("Generation model loaded successfully")
 
     def load_judge_model(self) -> None:
-        if not self.enable_quality_judge:
+        if not self.configs.enable_quality_judge:
             return
-        if not os.path.isfile(self.judge_model_path):
-            raise FileNotFoundError(f"Judge model not found: {self.judge_model_path}")
-        self.logger.info(f"Loading judge model: {self.judge_model_path}")
-        self.judge_llm = Llama(model_path=self.judge_model_path,
-                               n_ctx=self.n_ctx, n_threads=self.n_threads,
-                               n_batch=self.n_batch, n_gpu_layers=self.n_gpu_layers,
-                               use_mmap=True, use_mlock=False, verbose=True, seed=self.seed + 1000000)
+        if not os.path.isfile(self.configs.judge_model_path):
+            raise FileNotFoundError(f"Judge model not found: {self.configs.judge_model_path}")
+        self.logger.info(f"Loading judge model: {self.configs.judge_model_path}")
+        self.judge_llm = Llama(model_path=self.configs.judge_model_path,
+                               n_ctx=self.configs.n_ctx, n_threads=self.configs.n_threads,
+                               n_batch=self.configs.n_batch, n_gpu_layers=self.configs.n_gpu_layers,
+                               use_mmap=True, use_mlock=False, verbose=True, seed=self.configs.seed + 1000000)
         self.logger.info("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
@@ -325,14 +295,14 @@ class SyntheticDatasetGenerator:
     def _build_prompt(self, topic: str, task: str, style: str, difficulty: str,
                       audience: str, question_style: str, index: int) -> str:
 
-        if self.multi_turn:
+        if self.configs.multi_turn:
             intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
             intro_en = "Generate a high-quality multi-turn instruction-tuning example."
 
             turn_instruction_fa = f"""
     یک گفت‌وگوی چندمرحله‌ای تولید کن.
 
-    تعداد نوبت‌های گفت‌وگو باید بین {self.min_turns} و {self.max_turns} نوبت باشد.
+    تعداد نوبت‌های گفت‌وگو باید بین {self.configs.min_turns} و {self.configs.max_turns} نوبت باشد.
     هر نوبت شامل یک پیام user و یک پیام assistant است.
 
     گفت‌وگو باید پیوستگی معنایی داشته باشد.
@@ -347,7 +317,7 @@ class SyntheticDatasetGenerator:
             turn_instruction_en = f"""
     Generate a multi-turn conversation.
 
-    The conversation must contain between {self.min_turns} and {self.max_turns} turns.
+    The conversation must contain between {self.configs.min_turns} and {self.configs.max_turns} turns.
     Each turn consists of one user message followed by one assistant message.
 
     The conversation must maintain semantic continuity.
@@ -424,7 +394,7 @@ class SyntheticDatasetGenerator:
       ]
     }}
 
-    {"در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..." if self.multi_turn else "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant."}
+    {"در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..." if self.configs.multi_turn else "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant."}
     """
 
         return f"""/no_think
@@ -462,7 +432,7 @@ class SyntheticDatasetGenerator:
       ]
     }}
 
-    {"For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..." if self.multi_turn else "For single-turn mode, return exactly two messages: user → assistant."}
+    {"For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..." if self.configs.multi_turn else "For single-turn mode, return exactly two messages: user → assistant."}
     """
 
     def _validate_structure(self, sample: Any) -> Tuple[bool, str]:
@@ -474,10 +444,10 @@ class SyntheticDatasetGenerator:
         if not isinstance(messages, list):
             return False, "invalid_messages"
 
-        if self.multi_turn:
+        if self.configs.multi_turn:
             turns = len(messages) // 2
 
-            if turns < self.min_turns or turns > self.max_turns:
+            if turns < self.configs.min_turns or turns > self.configs.max_turns:
                 return False, "invalid_multi_turn_turn_count"
         else:
             if len(messages) != 2:
@@ -514,16 +484,16 @@ class SyntheticDatasetGenerator:
             for message in assistant_messages
         )
 
-        if total_user_words < self.min_user_words:
+        if total_user_words < self.configs.min_user_words:
             return False, "user_too_short"
 
-        if total_user_words > self.max_user_words:
+        if total_user_words > self.configs.max_user_words:
             return False, "user_too_long"
 
-        if total_assistant_words < self.min_assistant_words:
+        if total_assistant_words < self.configs.min_assistant_words:
             return False, "assistant_too_short"
 
-        if total_assistant_words > self.max_assistant_words:
+        if total_assistant_words > self.configs.max_assistant_words:
             return False, "assistant_too_long"
 
         return True, "ok"
@@ -654,7 +624,7 @@ class SyntheticDatasetGenerator:
         ).hexdigest()
 
     def _judge(self, sample: Dict[str, Any]) -> bool:
-        if not self.enable_quality_judge:
+        if not self.configs.enable_quality_judge:
             return True
         prompt = f"""این نمونه دیتاست instruction-tuning را از نظر کیفیت بررسی کن.
 
@@ -671,9 +641,9 @@ class SyntheticDatasetGenerator:
 نمونه:
 {json.dumps(sample, ensure_ascii=False)}"""
         try:
-            result = self.judge_llm.create_chat_completion(messages=[{"role": "system", "content": "You are a strict dataset quality evaluator. Return only valid JSON."}, {"role": "user", "content": prompt}], temperature=0.1, top_p=0.9, max_tokens=200, response_format={"type": "json_object"}, seed=self.seed + self.accepted)
+            result = self.judge_llm.create_chat_completion(messages=[{"role": "system", "content": "You are a strict dataset quality evaluator. Return only valid JSON."}, {"role": "user", "content": prompt}], temperature=0.1, top_p=0.9, max_tokens=200, response_format={"type": "json_object"}, seed=self.configs.seed + self.accepted)
             judgment = json.loads(result["choices"][0]["message"]["content"].strip())
-            return bool(judgment.get("acceptable", False)) and int(judgment.get("score", 0)) >= self.min_quality_score
+            return bool(judgment.get("acceptable", False)) and int(judgment.get("score", 0)) >= self.configs.min_quality_score
         except Exception as exc:
             self.logger.warning("Judge failure: %s", exc)
             return False
@@ -686,20 +656,20 @@ class SyntheticDatasetGenerator:
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
         prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
-        self.logger.info(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.retry_count}")
+        self.logger.info(f"Generating sample: index={index}, topic={topic}, task={task}, retry_count={self.configs.retry_count}")
 
-        for retry in range(self.retry_count):
+        for retry in range(self.configs.retry_count):
             try:
-                self.logger.info(f"Generation attempt: index={index}, retry={retry + 1}/{self.retry_count}")
+                self.logger.info(f"Generation attempt: index={index}, retry={retry + 1}/{self.configs.retry_count}")
 
                 temperature = min(
                     0.95,
-                    max(0.55, self.temperature + self.random.uniform(-0.08, 0.08))
+                    max(0.55, self.configs.temperature + self.random.uniform(-0.08, 0.08))
                 )
 
                 
                 self.logger.info("=" * 80)
-                self.logger.info(f"START GENERATION | index={index} | retry={retry + 1}/{self.retry_count}")
+                self.logger.info(f"START GENERATION | index={index} | retry={retry + 1}/{self.configs.retry_count}")
                 self.logger.info("=" * 80)
 
                 generation_start = time.time()
@@ -716,12 +686,12 @@ class SyntheticDatasetGenerator:
                         }
                     ],
                     temperature=temperature,
-                    top_p=self.top_p,
-                    min_p=self.min_p,
-                    repeat_penalty=self.repeat_penalty,
-                    max_tokens=self.max_tokens,
+                    top_p=self.configs.top_p,
+                    min_p=self.configs.min_p,
+                    repeat_penalty=self.configs.repeat_penalty,
+                    max_tokens=self.configs.max_tokens,
                     response_format={"type": "json_object"},
-                    seed=self.seed + index * 100 + retry,
+                    seed=self.configs.seed + index * 100 + retry,
                     stream=True,
                 )
 
@@ -790,7 +760,7 @@ class SyntheticDatasetGenerator:
                     self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
 
-                if self._quality_score(sample) < self.min_quality_score:
+                if self._quality_score(sample) < self.configs.min_quality_score:
                     self.stats["quality_failed"] += 1
                     self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
@@ -808,11 +778,11 @@ class SyntheticDatasetGenerator:
                 self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
                 self.logger.warning("Generation failure index=%s retry=%s error=%s", index, retry + 1, exc)
 
-        self.logger.info(f"Sample generation failed after {self.retry_count} retries: index={index}")
+        self.logger.info(f"Sample generation failed after {self.configs.retry_count} retries: index={index}")
         return {}
 
     def _output_dir(self) -> str:
-        directory = os.path.dirname(self.output_path) or "."
+        directory = os.path.dirname(self.configs.output_path) or "."
         os.makedirs(directory, exist_ok=True)
         return directory
 
@@ -825,11 +795,11 @@ class SyntheticDatasetGenerator:
         return os.path.join(self._checkpoint_dir(), "state.json")
 
     def _shard_path(self, index: int) -> str:
-        base = os.path.splitext(os.path.basename(self.output_path))[0]
+        base = os.path.splitext(os.path.basename(self.configs.output_path))[0]
         return os.path.join(self._output_dir(), f"{base}-{index:06d}.parquet")
 
     def _existing_shards(self) -> List[str]:
-        base = os.path.splitext(os.path.basename(self.output_path))[0]
+        base = os.path.splitext(os.path.basename(self.configs.output_path))[0]
         pattern = re.compile(rf"^{re.escape(base)}-\d{{6}}\.parquet$")
         return sorted(os.path.join(self._output_dir(), name) for name in os.listdir(self._output_dir()) if pattern.fullmatch(name))
 
@@ -858,9 +828,9 @@ class SyntheticDatasetGenerator:
 
         self.logger.info("=" * 80)
         self.logger.info("Starting synthetic dataset generation")
-        self.logger.info(f"Target samples: {self.total_samples}")
+        self.logger.info(f"Target samples: {self.configs.total_samples}")
         self.logger.info(f"Language: {self.language}")
-        self.logger.info(f"Output: {self.output_path}")
+        self.logger.info(f"Output: {self.configs.output_path}")
         self.logger.info("=" * 80)
 
         self.load_model()
@@ -875,7 +845,7 @@ class SyntheticDatasetGenerator:
         shard_index = len(existing_shards)
         next_index = self.accepted
 
-        while self.accepted < self.total_samples and self.attempts < self.max_attempts:
+        while self.accepted < self.configs.total_samples and self.attempts < self.max_attempts:
             self.attempts += 1
             self.stats["attempts"] = self.attempts
 
@@ -902,16 +872,16 @@ class SyntheticDatasetGenerator:
             next_index = self.accepted
 
             self.logger.info(
-                f"Accepted: {self.accepted}/{self.total_samples} "
+                f"Accepted: {self.accepted}/{self.configs.total_samples} "
                 f"| Attempts: {self.attempts}/{self.max_attempts}"
             )
 
-            if len(current_shard) >= self.shard_size:
+            if len(current_shard) >= self.configs.shard_size:
                 self._save_shard(current_shard, shard_index)
                 shard_index += 1
                 current_shard = []
 
-            if self.accepted % self.checkpoint_interval == 0:
+            if self.accepted % self.configs.checkpoint_interval == 0:
                 self._save_checkpoint(next_index)
 
         if current_shard:

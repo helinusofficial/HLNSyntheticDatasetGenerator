@@ -17,10 +17,7 @@ class SyntheticDatasetGenerator:
     def __init__(self,logger, cfg):
         self.logger=logger
         self.configs=cfg
-
-        self.language = self.configs.language.lower().strip()
         self.max_attempts = max(1, self.configs.total_samples * int(self.configs.max_attempts_multiplier))
-
         self.random = random.Random(self.configs.seed)
         self.llm = None
         self.judge_llm = None
@@ -57,11 +54,11 @@ class SyntheticDatasetGenerator:
             }
         }
 
-        if self.language not in self.language_configs:
-            raise ValueError(f"Unsupported language: {self.language}")
+        if self.configs.language not in self.language_configs:
+            raise ValueError(f"Unsupported language: {self.configs.language}")
 
-        self.selected_lang_config = self.language_configs[self.language]
-        self.topics = self.configs.topics[self.language]
+        self.selected_lang_config = self.language_configs[self.configs.language]
+        self.topics = self.configs.topics[self.configs.language]
         self.tasks = self.selected_lang_config["tasks"]
         self.styles = self.selected_lang_config["styles"]
         self.audiences = self.selected_lang_config["audiences"]
@@ -212,7 +209,7 @@ class SyntheticDatasetGenerator:
         return arabic / len(chars)
 
     def _persian_spacing_score(self, text: str) -> float:
-        if self.language != "fa":
+        if self.configs.language != "fa":
             return 1.0
         words = self._words(text)
         if len(words) < 20:
@@ -256,7 +253,7 @@ class SyntheticDatasetGenerator:
         return repeated / len(sentences)
 
     def _has_excessive_latin(self, text: str) -> bool:
-        if self.language != "fa":
+        if self.configs.language != "fa":
             return False
         words = self._words(text)
         if not words:
@@ -265,12 +262,12 @@ class SyntheticDatasetGenerator:
         return latin_words / len(words) > 0.28
 
     def _has_invalid_persian_characters(self, text: str) -> bool:
-        if self.language != "fa":
+        if self.configs.language != "fa":
             return False
         return any(char in text for char in ["ي", "ك", "ى", "ة"])
 
     def _has_bad_punctuation(self, text: str) -> bool:
-        if self.language != "fa":
+        if self.configs.language != "fa":
             return False
         if "؟؟؟" in text or "!!!" in text:
             return True
@@ -281,7 +278,7 @@ class SyntheticDatasetGenerator:
         return False
 
     def _language_quality(self, text: str) -> float:
-        if self.language != "fa":
+        if self.configs.language != "fa":
             return 1.0
         score = self._persian_letter_ratio(text)
         if self._has_invalid_persian_characters(text):
@@ -345,7 +342,7 @@ class SyntheticDatasetGenerator:
     The output must contain exactly two messages.
     """
 
-        if self.language == "fa":
+        if self.configs.language == "fa":
             return f"""/no_think
             {intro_fa}
 
@@ -504,7 +501,7 @@ class SyntheticDatasetGenerator:
         for i, message in enumerate(messages):
             text = message["content"]
 
-            if self.language == "fa":
+            if self.configs.language == "fa":
                 if self._persian_letter_ratio(text) < 0.58:
                     return False, f"message_{i}_not_persian"
 
@@ -559,7 +556,7 @@ class SyntheticDatasetGenerator:
         if self._has_bad_punctuation(all_assistant_text):
             score -= 8
 
-        if self.language == "fa":
+        if self.configs.language == "fa":
             if self._language_quality(all_user_text) < 0.72:
                 score -= 10
 
@@ -586,7 +583,7 @@ class SyntheticDatasetGenerator:
         for message in sample["messages"]:
             content = message["content"].strip()
 
-            if self.language == "fa":
+            if self.configs.language == "fa":
                 content = self._normalize_persian_text(content)
             else:
                 content = unicodedata.normalize("NFKC", content)
@@ -652,7 +649,7 @@ class SyntheticDatasetGenerator:
         topic = self.random.choice(self.topics)
         task = self.random.choice(self.tasks)
         style = self.random.choice(self.styles)
-        difficulty = self.random.choice(["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.language == "fa" else ["Beginner", "Intermediate", "Advanced", "Expert"])
+        difficulty = self.random.choice(["مبتدی", "متوسط", "پیشرفته", "تخصصی"] if self.configs.language == "fa" else ["Beginner", "Intermediate", "Advanced", "Expert"])
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
         prompt = self._build_prompt(topic, task, style, difficulty, audience, question_style, index)
@@ -829,7 +826,7 @@ class SyntheticDatasetGenerator:
         self.logger.info("=" * 80)
         self.logger.info("Starting synthetic dataset generation")
         self.logger.info(f"Target samples: {self.configs.total_samples}")
-        self.logger.info(f"Language: {self.language}")
+        self.logger.info(f"Language: {self.configs.language}")
         self.logger.info(f"Output: {self.configs.output_path}")
         self.logger.info("=" * 80)
 

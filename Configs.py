@@ -202,10 +202,7 @@ class SyntheticDatasetConfig:
 
  load_model_use_mmap              : {self.load_model_use_mmap}
  load_model_use_mlock             : {self.load_model_use_mlock}
- load_model_verbose               : {self.load_model_verbose}
-
-
-"""
+ load_model_verbose               : {self.load_model_verbose}"""
 
     def log(self):
         if self._logged:

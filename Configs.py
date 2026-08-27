@@ -1,3 +1,4 @@
+import re
 
 class SyntheticDatasetConfig:
     def __init__(self, logger):
@@ -552,12 +553,11 @@ class SyntheticDatasetConfig:
 
     def _build_config_text(self) -> str:
         lines = []
-
+        lines.append("")
         lines.append("=" * 90)
         lines.append("SyntheticDatasetConfig Configuration")
         lines.append("=" * 90)
 
-        lines.append("")
         lines.append("[MODEL]")
         lines.append(f"Model_Path                : {self.model_path}")
         lines.append(f"N_Context                 : {self.n_ctx}")
@@ -617,7 +617,7 @@ class SyntheticDatasetConfig:
         lines.append(f"Topics_Count_EN           : {len(self.topics.get('en', []))}")
 
         for language, topics in self.topics.items():
-            lines.append(f"Topics_{language.upper()}          : {topics}")
+            lines.append(f"Topics_{language.upper()}                 : {topics}")
 
         lines.append("")
         lines.append("[DIFFICULTIES]")
@@ -678,9 +678,16 @@ class SyntheticDatasetConfig:
         lines.append("[STATS]")
         for key, value in self.stats.items():
             lines.append(f"{key:<25}: {value}")
-        lines.append("-" * 113)
 
-        return "\n".join(lines)
+        lines.append("-" * 113)
+        text = "\n".join(lines)
+        text = re.sub(
+            r"\\u([0-9a-fA-F]{4})",
+            lambda m: chr(int(m.group(1), 16)),
+            text
+        )
+
+        return text
 
     def log(self):
         if self._logged:

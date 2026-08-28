@@ -7,11 +7,11 @@ class SyntheticDatasetConfig:
 
         self.model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
         self.output_path = r"./dataset/synthetic.parquet"
-        self.total_samples = 1
+        self.total_samples = 10
         self.n_ctx = 2048
         self.n_threads = 8
         self.n_batch = 256
-        self.max_tokens = 256
+        self.max_tokens = 512
 
         self.n_gpu_layers = 0
         self.seed = 42
@@ -35,9 +35,9 @@ class SyntheticDatasetConfig:
         self.export_final = True
         self.cleanup_shards = False
 
-        self.min_turns = 1
-        self.max_turns = 1
-        self.multi_turn = False
+        self.min_turns = 2
+        self.max_turns = 3
+        self.multi_turn = True
 
         self.topics = {
             "fa": [
@@ -581,11 +581,11 @@ class SyntheticDatasetConfig:
 
         self.load_model_use_mmap = True
         self.load_model_use_mlock = False
-        self.load_model_verbose = True
+        self.load_model_verbose = False
 
         self.judge_llm_use_mmap=True
         self.judge_llm_use_mlock=False
-        self.judge_llm_verbose=True
+        self.judge_llm_verbose=False
 
         self.language_configs = {
             "fa": {

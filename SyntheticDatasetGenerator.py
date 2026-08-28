@@ -513,6 +513,8 @@ class SyntheticDatasetGenerator:
             return False
 
     def _generate_sample(self, index: int) -> Dict[str, Any]:
+        perf_start = time.perf_counter()
+
         topic = self.random.choice(self.topics)
         task = self.random.choice(self.tasks)
         style = self.random.choice(self.styles)
@@ -520,7 +522,12 @@ class SyntheticDatasetGenerator:
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
 
-        prompt = self._build_prompt(topic,task,style,difficulty,audience,question_style,index)
+        t = time.perf_counter()
+        prompt = self._build_prompt(
+            topic, task, style, difficulty,
+            audience, question_style, index
+        )
+        prompt_time = time.perf_counter() - t
 
         self.logger.info(
             f"Generating sample: index={index}, topic={topic}, "
@@ -552,7 +559,11 @@ class SyntheticDatasetGenerator:
                     f"retry={retry + 1}/{self.configs.retry_count}"
                 )
                 self.logger.info("=" * 80)
-                generation_start = time.time()
+
+                generation_start = time.perf_counter()
+
+                t_before_call = time.perf_counter()
+
                 stream = self.llm.create_chat_completion(
                     messages=[
                         {
@@ -577,106 +588,204 @@ class SyntheticDatasetGenerator:
                     seed=self.configs.seed + index * 100 + retry,
                     stream=True,
                 )
-                stream_ready_time = time.time()
+
+                stream_ready_time = time.perf_counter()
+
                 self.logger.info(
-                    f"Stream ready after: "
-                    f"{stream_ready_time - generation_start:.2f} seconds"
+                    f"Create_chat_completion returned: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(stream_ready_time - t_before_call))}"
                 )
+
                 raw_parts = []
                 chunk_count = 0
                 first_token_time = None
 
                 for chunk in stream:
                     content = chunk["choices"][0]["delta"].get("content", "")
+
                     if not content:
                         continue
+
+                    now = time.perf_counter()
+
                     if first_token_time is None:
-                        first_token_time = time.time()
+                        first_token_time = now
+
                         self.logger.info(
-                            f"First token after: "
-                            f"{first_token_time - generation_start:.2f} seconds"
+                            f"First content token: "
+                            f"{time.strftime('%H:%M:%S', time.gmtime(first_token_time - generation_start))}"
                         )
+
+                        self.logger.info(
+                            f"Time from stream creation to first token: "
+                            f"{time.strftime('%H:%M:%S', time.gmtime(first_token_time - stream_ready_time))}"
+                        )
+
                         self.logger.info("-" * 80)
 
                     raw_parts.append(content)
                     chunk_count += 1
 
-                    self.logger.info(content, end="", flush=True)
+                generation_end = time.perf_counter()
 
-                generation_end = time.time()
                 raw = "".join(raw_parts).strip()
+
                 total_time = generation_end - generation_start
+
+                first_token_delay = (
+                    first_token_time - generation_start
+                    if first_token_time
+                    else total_time
+                )
+
+                generation_only_time = (
+                    generation_end - first_token_time
+                    if first_token_time
+                    else total_time
+                )
+
+                speed = chunk_count / max(0.001, generation_only_time)
 
                 self.logger.info("-" * 80)
 
-                if first_token_time:
-                    first_token_delay = first_token_time - generation_start
-                else:
-                    first_token_delay = total_time
-
-                generation_only_time = max(
-                    0.001,
-                    generation_end - (first_token_time or generation_start)
-                )
-
-                speed = chunk_count / generation_only_time
-
                 self.logger.info(
-                    f"   Generation Stats\n"
-                    f"   Total time       : {total_time:.2f} sec\n"
-                    f"   First token      : {first_token_delay:.2f} sec\n"
-                    f"   Chunks           : {chunk_count}\n"
-                    f"   Approx speed     : {speed:.2f} chunks/sec\n"
-                    f"   Output chars     : {len(raw)}"
+                    f"\nGeneration complete\n"
+                    f"create_chat_completion : {time.strftime('%H:%M:%S', time.gmtime(stream_ready_time - t_before_call))}\n"
+                    f"first token            : {time.strftime('%H:%M:%S', time.gmtime(first_token_delay))}\n"
+                    f"generation only        : {time.strftime('%H:%M:%S', time.gmtime(generation_only_time))}\n"
+                    f"total                  : {time.strftime('%H:%M:%S', time.gmtime(total_time))}\n"
+                    f"chunks                 : {chunk_count}\n"
+                    f"chars                  : {len(raw)}\n"
+                    f"chunks/sec             : {speed:.4f}"
                 )
+
                 self.logger.info("=" * 80)
+
+                t = time.perf_counter()
 
                 try:
                     sample = json.loads(raw)
                 except json.JSONDecodeError:
-                    self.configs.stats["json_failed"] += 1
+                    json_time = time.perf_counter() - t
+
                     self.logger.info(
-                        f"JSON parsing failed: "
-                        f"index={index}, retry={retry + 1}"
+                        f"JSON parse: "
+                        f"{time.strftime('%H:%M:%S', time.gmtime(json_time))} | FAILED"
                     )
+
+                    self.configs.stats["json_failed"] += 1
                     continue
 
-                valid, _ = self._validate_structure(sample)
+                json_time = time.perf_counter() - t
+
+                self.logger.info(
+                    f"JSON parse: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(json_time))}"
+                )
+
+                t = time.perf_counter()
+
+                valid, reason = self._validate_structure(sample)
+
+                structure_time = time.perf_counter() - t
+
+                self.logger.info(
+                    f"Structure validation: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(structure_time))} | valid={valid} | reason={reason}"
+                )
 
                 if not valid:
                     self.configs.stats["validation_failed"] += 1
-                    self.logger.info(
-                        f"Structure validation failed: "
-                        f"index={index}, retry={retry + 1}"
-                    )
                     continue
 
+                t = time.perf_counter()
+
                 sample = self._normalize_sample(sample)
-                valid, _ = self._validate_language(sample)
+
+                normalize_time = time.perf_counter() - t
+
+                self.logger.info(
+                    f"Normalize: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(normalize_time))}"
+                )
+
+                t = time.perf_counter()
+
+                valid, reason = self._validate_language(sample)
+
+                language_time = time.perf_counter() - t
+
+                self.logger.info(
+                    f"Language validation: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(language_time))} | valid={valid} | reason={reason}"
+                )
 
                 if not valid:
                     self.configs.stats["language_failed"] += 1
-                    self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
 
-                if self._quality_score(sample) < self.configs.min_quality_score:
+                t = time.perf_counter()
+
+                quality_score = self._quality_score(sample)
+
+                quality_time = time.perf_counter() - t
+
+                self.logger.info(
+                    f"Quality score: "
+                    f"{time.strftime('%H:%M:%S', time.gmtime(quality_time))} | score={quality_score}"
+                )
+
+                if quality_score < self.configs.min_quality_score:
                     self.configs.stats["quality_failed"] += 1
-                    self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
 
-                if not self._judge(sample):
-                    self.configs.stats["quality_failed"] += 1
-                    self.logger.info(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
-                    continue
+                if self.configs.enable_quality_judge:
+                    t = time.perf_counter()
 
-                self.logger.info(f"Sample accepted: index={index}, retry={retry + 1}")
+                    judge_result = self._judge(sample)
+
+                    judge_time = time.perf_counter() - t
+
+                    self.logger.info(f"Judge: {time.strftime('%H:%M:%S', time.gmtime(judge_time))} | result={judge_result}")
+
+                    if not judge_result:
+                        self.configs.stats["quality_failed"] += 1
+                        self.logger.info(
+                            f"Quality judge rejected sample: "
+                            f"index={index}, retry={retry + 1}"
+                        )
+                        continue
+
+                total_sample_time = time.perf_counter() - perf_start
+
+                self.logger.info(
+                    f"\n******** SAMPLE ACCEPTED ********\n"
+                    f"Index             : {index}\n"
+                    f"Retry             : {retry + 1}\n"
+                    f"Prompt build      : {time.strftime('%H:%M:%S', time.gmtime(prompt_time))}\n"
+                    f"Generation        : {time.strftime('%H:%M:%S', time.gmtime(total_time))}\n"
+                    f"JSON              : {time.strftime('%H:%M:%S', time.gmtime(json_time))}\n"
+                    f"Structure         : {time.strftime('%H:%M:%S', time.gmtime(structure_time))}\n"
+                    f"Normalize         : {time.strftime('%H:%M:%S', time.gmtime(normalize_time))}\n"
+                    f"Language          : {time.strftime('%H:%M:%S', time.gmtime(language_time))}\n"
+                    f"Quality           : {time.strftime('%H:%M:%S', time.gmtime(quality_time))}\n"
+                    f"Total sample      : {time.strftime('%H:%M:%S', time.gmtime(total_sample_time))}\n"
+                    f"********************************"
+                )
+
+                self.logger.info(
+                    f"Sample accepted: index={index}, retry={retry + 1}"
+                )
 
                 return sample
 
             except Exception as exc:
                 self.configs.stats["generation_failed"] += 1
 
-                self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
+                self.logger.info(
+                    f"Generation error: "
+                    f"index={index}, retry={retry + 1}, error={exc}"
+                )
 
                 self.logger.warning(
                     "Generation failure index=%s retry=%s error=%s",
@@ -684,7 +793,11 @@ class SyntheticDatasetGenerator:
                     retry + 1,
                     exc
                 )
-        self.logger.info(f"Sample generation failed after {self.configs.retry_count} retries: index={index}")
+
+        self.logger.info(
+            f"Sample generation failed after "
+            f"{self.configs.retry_count} retries: index={index}"
+        )
 
         return {}
 

@@ -745,9 +745,7 @@ class SyntheticDatasetGenerator:
 
     def run(self) -> None:
         self._validate_config()
-
         self.start_time = time.time()
-
         self.logger.info("=" * 80)
         self.logger.info("Starting synthetic dataset generation")
         self.logger.info(f"Target samples: {self.configs.total_samples}")

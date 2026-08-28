@@ -1,6 +1,5 @@
 import re
 
-
 class SyntheticDatasetConfig:
     def __init__(self, logger):
         self.logger = logger
@@ -9,8 +8,8 @@ class SyntheticDatasetConfig:
         self.output_path = r"./dataset/synthetic.parquet"
         self.total_samples = 10
         self.n_ctx = 2048
-        self.n_threads = 8
-        self.n_batch = 256
+        self.n_threads = 4
+        self.n_batch = 1024
         self.max_tokens = 512
 
         self.n_gpu_layers = 0
@@ -29,7 +28,7 @@ class SyntheticDatasetConfig:
         self.top_p = 0.9
         self.min_p = 0.05
         self.repeat_penalty = 1.08
-        self.retry_count = 1
+        self.retry_count = 3
         self.enable_quality_judge = False
         self.judge_model_path = None
         self.export_final = True

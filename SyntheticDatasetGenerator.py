@@ -590,12 +590,6 @@ class SyntheticDatasetGenerator:
                 )
 
                 stream_ready_time = time.perf_counter()
-
-                self.logger.info(
-                    f"Create_chat_completion returned: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(stream_ready_time - t_before_call))}"
-                )
-
                 raw_parts = []
                 chunk_count = 0
                 first_token_time = None
@@ -668,9 +662,16 @@ class SyntheticDatasetGenerator:
                 except json.JSONDecodeError:
                     json_time = time.perf_counter() - t
 
-                    self.logger.info(
-                        f"JSON parse: "
-                        f"{time.strftime('%H:%M:%S', time.gmtime(json_time))} | FAILED"
+                    self.logger.error(
+                        "\n"
+                        "================ JSON PARSE FAILED ================\n"
+                        f"index              : {index}\n"
+                        f"retry              : {retry + 1}/{self.configs.retry_count}\n"
+                        f"raw length         : {len(raw)}\n"
+                        f"json error         : {exc}\n"
+                        f"error position     : line={exc.lineno}, column={exc.colno}, char={exc.pos}\n"
+                        f"raw output:\n{raw}\n"
+                        "====================================================="
                     )
 
                     self.configs.stats["json_failed"] += 1

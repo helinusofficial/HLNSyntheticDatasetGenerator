@@ -460,14 +460,9 @@ class SyntheticDatasetGenerator:
             else:
                 content = unicodedata.normalize("NFKC", content)
 
-            normalized_messages.append({
-                "role": message["role"],
-                "content": content
-            })
+            normalized_messages.append({"role": message["role"],"content": content})
 
-        return {
-            "messages": normalized_messages
-        }
+        return {"messages": normalized_messages}
 
     def _signature(self, sample: Dict[str, Any]) -> str:
         parts = []
@@ -566,7 +561,7 @@ class SyntheticDatasetGenerator:
 
                 self.logger.info("=" * 80)
                 self.logger.info(
-                    f"START GENERATION | index={index} | "
+                    f"Start Generation | index={index} | "
                     f"retry={retry + 1}/{self.configs.retry_count}"
                 )
                 self.logger.info("=" * 80)
@@ -597,27 +592,21 @@ class SyntheticDatasetGenerator:
                     seed=self.configs.seed + index * 100 + retry,
                     stream=True,
                 )
-
                 stream_ready_time = time.time()
-
                 self.logger.info(
                     f"Stream ready after: "
                     f"{stream_ready_time - generation_start:.2f} seconds"
                 )
-
                 raw_parts = []
                 chunk_count = 0
                 first_token_time = None
 
                 for chunk in stream:
                     content = chunk["choices"][0]["delta"].get("content", "")
-
                     if not content:
                         continue
-
                     if first_token_time is None:
                         first_token_time = time.time()
-
                         self.logger.info(
                             f"First token after: "
                             f"{first_token_time - generation_start:.2f} seconds"
@@ -648,19 +637,17 @@ class SyntheticDatasetGenerator:
                 speed = chunk_count / generation_only_time
 
                 self.logger.info(
-                    f"   GENERATION STATS\n"
+                    f"   Generation Stats\n"
                     f"   Total time       : {total_time:.2f} sec\n"
                     f"   First token      : {first_token_delay:.2f} sec\n"
                     f"   Chunks           : {chunk_count}\n"
                     f"   Approx speed     : {speed:.2f} chunks/sec\n"
                     f"   Output chars     : {len(raw)}"
                 )
-
                 self.logger.info("=" * 80)
 
                 try:
                     sample = json.loads(raw)
-
                 except json.JSONDecodeError:
                     self.configs.stats["json_failed"] += 1
                     self.logger.info(
@@ -680,46 +667,31 @@ class SyntheticDatasetGenerator:
                     continue
 
                 sample = self._normalize_sample(sample)
-
                 valid, _ = self._validate_language(sample)
 
                 if not valid:
                     self.configs.stats["language_failed"] += 1
-                    self.logger.info(
-                        f"Language validation failed: "
-                        f"index={index}, retry={retry + 1}"
-                    )
+                    self.logger.info(f"Language validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if self._quality_score(sample) < self.configs.min_quality_score:
                     self.configs.stats["quality_failed"] += 1
-                    self.logger.info(
-                        f"Quality validation failed: "
-                        f"index={index}, retry={retry + 1}"
-                    )
+                    self.logger.info(f"Quality validation failed: index={index}, retry={retry + 1}")
                     continue
 
                 if not self._judge(sample):
                     self.configs.stats["quality_failed"] += 1
-                    self.logger.info(
-                        f"Quality judge rejected sample: "
-                        f"index={index}, retry={retry + 1}"
-                    )
+                    self.logger.info(f"Quality judge rejected sample: index={index}, retry={retry + 1}")
                     continue
 
-                self.logger.info(
-                    f"Sample accepted: index={index}, retry={retry + 1}"
-                )
+                self.logger.info(f"Sample accepted: index={index}, retry={retry + 1}")
 
                 return sample
 
             except Exception as exc:
                 self.configs.stats["generation_failed"] += 1
 
-                self.logger.info(
-                    f"Generation error: index={index}, "
-                    f"retry={retry + 1}, error={exc}"
-                )
+                self.logger.info(f"Generation error: index={index}, retry={retry + 1}, error={exc}")
 
                 self.logger.warning(
                     "Generation failure index=%s retry=%s error=%s",
@@ -727,11 +699,7 @@ class SyntheticDatasetGenerator:
                     retry + 1,
                     exc
                 )
-
-        self.logger.info(
-            f"Sample generation failed after "
-            f"{self.configs.retry_count} retries: index={index}"
-        )
+        self.logger.info(f"Sample generation failed after {self.configs.retry_count} retries: index={index}")
 
         return {}
 

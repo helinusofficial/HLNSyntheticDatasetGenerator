@@ -103,7 +103,9 @@ class SyntheticDatasetGenerator:
         self.judge_llm = Llama(model_path=self.configs.judge_model_path,
                                n_ctx=self.configs.n_ctx, n_threads=self.configs.n_threads,
                                n_batch=self.configs.n_batch, n_gpu_layers=self.configs.n_gpu_layers,
-                               use_mmap=True, use_mlock=False, verbose=True, seed=self.configs.seed + 1000000)
+                               use_mmap=self.configs.judge_llm_use_mmap,
+                               use_mlock=self.configs.judge_llm_use_mlock, verbose=self.configs.judge_llm_verbose,
+                               seed=self.configs.seed + 1000000)
         self.logger.info("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
@@ -468,13 +470,9 @@ class SyntheticDatasetGenerator:
         parts = []
 
         for message in sample["messages"]:
-            parts.append(
-                f"{message['role']}:{self._normalize_text(message['content'])}"
-            )
+            parts.append(f"{message['role']}:{self._normalize_text(message['content'])}")
 
-        return hashlib.sha256(
-            "\n".join(parts).encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
 
     def _user_signature(self, sample: Dict[str, Any]) -> str:
         user_messages = [
@@ -482,10 +480,7 @@ class SyntheticDatasetGenerator:
             for message in sample["messages"]
             if message["role"] == "user"
         ]
-
-        return hashlib.sha256(
-            "\n".join(user_messages).encode("utf-8")
-        ).hexdigest()
+        return hashlib.sha256("\n".join(user_messages).encode("utf-8")).hexdigest()
 
     def _judge(self, sample: Dict[str, Any]) -> bool:
         if not self.configs.enable_quality_judge:
@@ -525,15 +520,7 @@ class SyntheticDatasetGenerator:
         audience = self.random.choice(self.audiences)
         question_style = self.random.choice(self.question_styles)
 
-        prompt = self._build_prompt(
-            topic,
-            task,
-            style,
-            difficulty,
-            audience,
-            question_style,
-            index
-        )
+        prompt = self._build_prompt(topic,task,style,difficulty,audience,question_style,index)
 
         self.logger.info(
             f"Generating sample: index={index}, topic={topic}, "
@@ -565,9 +552,7 @@ class SyntheticDatasetGenerator:
                     f"retry={retry + 1}/{self.configs.retry_count}"
                 )
                 self.logger.info("=" * 80)
-
                 generation_start = time.time()
-
                 stream = self.llm.create_chat_completion(
                     messages=[
                         {

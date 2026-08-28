@@ -1,5 +1,6 @@
 import re
 
+
 class SyntheticDatasetConfig:
     def __init__(self, logger):
         self.logger = logger
@@ -549,10 +550,23 @@ class SyntheticDatasetConfig:
             }
         }
 
+        self.lexical_mi = {
+            "میان", "میوه", "میهن", "میزان", "میدان", "میعاد", "میانگین",
+            "میانه", "میلاد", "میل", "میخ", "میخک", "میگرن", "میگو",
+            "میانجی", "میانسال", "میان‌مدت", "میان‌بر", "میانگین"
+        }
+
+        self.comparative_exceptions = {
+            "بهتر", "بهترین", "بیشتر", "بیشترین", "کمتر", "کمترین",
+            "پیشتر", "پیشترین", "دیگر", "آخر", "آخرین", "برتر",
+            "برترین", "سوتر", "زودتر", "زودترین"
+        }
+
         self.config_text = self._build_config_text()
 
     def _build_config_text(self) -> str:
         lines = []
+
         lines.append("")
         lines.append("=" * 90)
         lines.append("SyntheticDatasetConfig Configuration")
@@ -617,7 +631,7 @@ class SyntheticDatasetConfig:
         lines.append(f"Topics_Count_EN           : {len(self.topics.get('en', []))}")
 
         for language, topics in self.topics.items():
-            lines.append(f"Topics_{language.upper()}                 : {topics}")
+            lines.append(f"Topics_{language.upper()}     : {topics}")
 
         lines.append("")
         lines.append("[DIFFICULTIES]")
@@ -632,7 +646,6 @@ class SyntheticDatasetConfig:
             lines.append(f"Name                      : {config.get('name')}")
             lines.append(f"Native                    : {config.get('native')}")
             lines.append(f"Script_Min                : {config.get('script_min')}")
-
             lines.append(f"Prompt                    : {config.get('prompt')}")
 
             lines.append(
@@ -673,6 +686,11 @@ class SyntheticDatasetConfig:
         lines.append("")
         lines.append("[PROMPT CONFIG]")
         lines.append(repr(self.prompt_config))
+
+        lines.append("")
+        lines.append("[LEXICAL CONFIG]")
+        lines.append(f"Lexical_MI                : {self.lexical_mi}")
+        lines.append(f"Comparative_Exceptions    : {self.comparative_exceptions}")
 
         lines.append("")
         lines.append("[STATS]")

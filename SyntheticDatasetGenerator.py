@@ -145,37 +145,47 @@ class SyntheticDatasetGenerator:
         return arabic / len(chars)
 
     def _persian_spacing_score(self, text: str) -> float:
-        if self.configs.language != "fa":
+        if self.configs.language != "fa" or not text or not text.strip():
             return 1.0
-
+        text = self._normalize_persian_text(text)
+        zwnj = "\u200c"
+        possible = 0
+        correct = 0
         words = self._words(text)
-
         if len(words) < 20:
             return 1.0
 
-        prefixes = ["می", "نمی"]
-        suffixes = ["ها", "های", "تر", "ترین"]
-
-        possible = 0
-        correct = 0
-
         for word in words:
-            for prefix in prefixes:
-                if word.startswith(prefix) and len(word) > len(prefix) + 2:
+            if word.startswith("می" + zwnj) or word.startswith("نمی" + zwnj):
+                stem = word.split(zwnj, 1)[1]
+                if len(stem) >= 3:
                     possible += 1
-                    if "\u200c" in word:
-                        correct += 1
-
-            for suffix in suffixes:
-                if word.endswith(suffix) and len(word) > len(suffix) + 2:
-                    possible += 1
-                    if "\u200c" in word:
-                        correct += 1
-
+                    correct += 1
+            elif word.startswith(("می", "نمی")) and len(word) >= 5 and word not in self.configs.lexical_mi:
+                possible += 1
+            if word.endswith(zwnj + "ها") or word.endswith(zwnj + "های"):
+                possible += 1
+                correct += 1
+            elif word.endswith(("ها", "های")) and len(word) > 4:
+                possible += 1
+            if word.endswith(zwnj + "تر") or word.endswith(zwnj + "ترین"):
+                possible += 1
+                correct += 1
+            elif word.endswith(("تر", "ترین")) and word not in self.configs.comparative_exceptions and len(word) > 5:
+                possible += 1
+        separated_prefixes = re.findall(r"(?<![\u0600-\u06FF])(می|نمی)\s+([\u0600-\u06FF]{3,})(?![\u0600-\u06FF])",
+                                        text)
+        possible += len([m for m in separated_prefixes if m[1] not in {"وه", "ان", "هن", "زان", "دان"}])
+        separated_plural = re.findall(r"([\u0600-\u06FF]{2,})\s+(ها|های)(?![\u0600-\u06FF])", text)
+        possible += len(separated_plural)
+        separated_comparative = re.findall(r"([\u0600-\u06FF]{3,})\s+(تر|ترین)(?![\u0600-\u06FF])", text)
+        possible += sum(1 for stem, suffix in separated_comparative if stem + suffix not in self.configs.comparative_exceptions)
+        invalid_zwnj = len(
+            re.findall(rf"{zwnj}{{2,}}|{zwnj}\s|\s{zwnj}|(?<![\u0600-\u06FF]){zwnj}|{zwnj}(?![\u0600-\u06FF])", text))
+        possible += invalid_zwnj
         if possible == 0:
             return 1.0
-
-        return correct / possible
+        return round(max(0.0, min(1.0, correct / possible)), 4)
 
     def _contains_bad_pattern(self, text: str) -> bool:
         normalized = self._normalize_text(text)

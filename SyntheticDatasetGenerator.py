@@ -649,7 +649,7 @@ class SyntheticDatasetGenerator:
                 self.logger.info("-" * 80)
 
                 self.logger.info(
-                    f"\nGeneration complete\n"
+                    f"\nGeneration complete:\n"
                     f"create_chat_completion : {time.strftime('%H:%M:%S', time.gmtime(stream_ready_time - t_before_call))}\n"
                     f"first token            : {time.strftime('%H:%M:%S', time.gmtime(first_token_delay))}\n"
                     f"generation only        : {time.strftime('%H:%M:%S', time.gmtime(generation_only_time))}\n"

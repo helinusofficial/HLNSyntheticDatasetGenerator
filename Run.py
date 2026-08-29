@@ -12,15 +12,15 @@ def main():
         start_time = time.time()
         start_datetime = datetime.now()
 
-        logger_obj = MyLogger(log_dir="alllogs", log_file_name="logs.txt")
-        logger, path = logger_obj.setup()
-        logger.info(f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger_obj = MyLogger(log_dir="SyntheticDatasetGenerator_log",log_file_name="logs.txt" )
 
+        logger, output_path = logger_obj.setup()
+        logger.info( f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
         configs = SyntheticDatasetConfig(logger)
         configs.log()
-        path = Path(path)
+        output_path = Path(output_path)
 
-        configs.output_file = path / configs.output_file
+        configs.output_file = output_path / Path(configs.output_file).name
         configs.output_temp_file = Path(str(configs.output_file) + ".tmp")
 
         generator = PersianConversationGenerator(logger, configs)
@@ -29,8 +29,11 @@ def main():
         end_time = time.time()
         end_datetime = datetime.now()
         elapsed = end_time - start_time
-        logger.info(f"Finished: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')} | "
-                    f"Execution Time: {TimeFormatHelper.format_elapsed(elapsed)}\n")
+
+        logger.info(
+            f"Finished: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')} | "
+            f"Execution Time: {TimeFormatHelper.format_elapsed(elapsed)}"
+        )
 
     except ValueError as error:
         print(f"ERROR: {error}")

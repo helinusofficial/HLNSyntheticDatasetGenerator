@@ -16,7 +16,7 @@ class SyntheticDatasetConfig:
         self.num_conversations = 100
         self.n_ctx = 8192
         self.n_threads = 4
-        self.n_batch = 512
+        self.n_batch = 1024
         self.n_gpu_layers = -1
 
         self.max_turns = 24
@@ -272,9 +272,7 @@ class SyntheticDatasetConfig:
             "گفت‌وگوی مسئله محور"
         ]
 
-        self.system_prompt = (
-            "شما یک تولیدکننده دیتاست مکالمات طبیعی فارسی هستید."
-        )
+        self.system_prompt = ("شما یک تولیدکننده دیتاست مکالمات طبیعی فارسی هستید.")
 
         self.conversation_prompt = """
 /no_think

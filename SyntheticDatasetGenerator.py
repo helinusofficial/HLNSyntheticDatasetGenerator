@@ -66,15 +66,11 @@ class PersianConversationGenerator:
     def generate_dataset(self):
         if self.config.max_turns is None:
             max_turns = self.config.max_turns
-
         if self.config.max_tokens is None:
             max_tokens = self.config.max_tokens
-
         if self.config.temperature is None:
             temperature = self.config.temperature
-
         dataset = []
-
         self.logger.info("=" * 60)
         self.logger.info(f"Generating {self.config.num_conversations} conversations")
         self.logger.info(f"Output: {self.output_file}")

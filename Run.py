@@ -17,6 +17,7 @@ def main():
         logger.info(f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
 
         config = SyntheticDatasetConfig(logger)
+        config.output_file=path/config.output_file
         generator = PersianConversationGenerator(logger,config)
         generator.generate_dataset()
 

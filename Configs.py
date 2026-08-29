@@ -11,7 +11,7 @@ class SyntheticDatasetConfig:
         # /content/drive/MyDrive/Helinus/models/gemma-3-4b-it-Q4_K_M.gguf
 
         self.model_path = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
-        self.output_file = ROOT/"persian_conversations.parquet"
+        self.output_file = "persian_conversations.parquet"
 
         self.num_conversations = 100
         self.n_ctx = 8192

@@ -82,8 +82,6 @@ class PersianConversationGenerator:
         self.logger.info("=" * 60)
 
         for i in range(self.num_conversations):
-
-
             try:
                 topic, response = self.generate_conversation(conversation_index=i + 1,
                                                              total_conversations=self.num_conversations,
@@ -115,13 +113,11 @@ class PersianConversationGenerator:
                 })
 
                 self.logger.info("\nConversation saved successfully.")
-
             except json.JSONDecodeError:
-                self.logger.info("\nERROR: Model returned invalid JSON.")
+                self.logger.info("\nError: Model returned invalid JSON.")
                 self.logger.info("Conversation skipped.")
-
             except Exception as e:
-                self.logger.info(f"\nERROR: {e}")
+                self.logger.info(f"\nError: {e}")
                 self.logger.info("Conversation skipped.")
 
         df = pd.DataFrame(dataset)

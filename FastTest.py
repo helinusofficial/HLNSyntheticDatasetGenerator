@@ -1,17 +1,17 @@
 from llama_cpp import Llama
 from datetime import datetime
 
-MODEL_PATH = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
+MODEL_PATH = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
 
 print("Loading model...")
 
 llm = Llama(
     model_path=MODEL_PATH,
     n_ctx=2048,
-    n_threads=8,
+    n_threads=4,
     n_batch=512,
     n_gpu_layers=-1,
-    verbose=True
+    verbose=False
 )
 
 print("Model loaded successfully!")
@@ -19,53 +19,44 @@ print("Model loaded successfully!")
 messages = [
     {
         "role": "system",
-        "content": "شما یک تولیدکننده دیتاست آموزشی با کیفیت برای مدل‌های زبانی بزرگ هستید."
+        "content": "شما یک تولیدکننده دیتاست مکالمات طبیعی فارسی هستید."
     },
     {
         "role": "user",
         "content": """
 /no_think
 
-یک نمونه مکالمه چند نوبتی به زبان فارسی تولید کن.
+یک مکالمه طبیعی و واقعی بین دو نفر به زبان فارسی تولید کن.
 
-موضوع:
-پزشکی
+موضوع مکالمه یکی از موضوعات روزمره باشد.
 
 قوانین:
-- مکالمه طبیعی و شبیه گفتگوی واقعی انسان باشد.
-- کاربر یک سوال واضح مطرح کند.
-- دستیار پاسخ کامل، دقیق و آموزشی ارائه دهد.
-- اطلاعات ساختگی تولید نکن.
-- خروجی فقط JSON معتبر باشد.
-- هیچ متن اضافی قبل یا بعد از JSON ننویس.
+- مکالمه کاملاً مرتبط با موضوع باشد.
+- هر دو نفر مانند انسان واقعی و طبیعی صحبت کنند.
+- سوال و پاسخ‌ها واضح و منطقی باشند.
+- مکالمه چندنوبتی باشد.
+- از جملات بی‌معنی یا ساختگی استفاده نکن.
+- فقط JSON معتبر خروجی بده و هیچ متن اضافی ننویس.
 
-فرمت خروجی:
-
+فرمت:
 {
   "messages": [
-    {
-      "role": "user",
-      "content": "سوال کاربر"
-    },
-    {
-      "role": "assistant",
-      "content": "پاسخ دستیار"
-    }
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."},
+    {"role": "user", "content": "..."},
+    {"role": "assistant", "content": "..."}
   ]
 }
-
-اکنون یک نمونه تولید کن.
 """
     }
 ]
-
 print("Generating response...\n")
 
 start_time = datetime.now()
 
 output = llm.create_chat_completion(
     messages=messages,
-    max_tokens=500,
+    max_tokens=3000,
     temperature=0.75,
     stream=True
 )

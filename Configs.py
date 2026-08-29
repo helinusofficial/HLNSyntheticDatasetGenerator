@@ -326,8 +326,6 @@ class SyntheticDatasetConfig:
         lines.append(f"N_GPU_Layers              : {self.n_gpu_layers}")
         lines.append(f"verbose                   : {self.verbose}")
         lines.append(f"Show_Generated_Output     : {self.Show_Generated_Output}")
-        lines.append(f"output_file               : {self.output_file}")
-
 
         lines.append("")
         lines.append("[DATASET]")

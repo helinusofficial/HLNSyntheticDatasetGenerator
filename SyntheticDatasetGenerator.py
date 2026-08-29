@@ -41,8 +41,8 @@ class PersianConversationGenerator:
             max_tokens = self.config.max_tokens
         if temperature is None:
             temperature = self.config.temperature
-        max_turns = min(max_turns, 16)
         max_messages = max_turns * 2
+
         topic = self.get_next_topic()
         self.logger.info(f"Conversation [{conversation_index}/{total_conversations}] | Topic: {topic}")
         messages = [

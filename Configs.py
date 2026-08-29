@@ -10,16 +10,16 @@ class SyntheticDatasetConfig:
         # /content/drive/MyDrive/Helinus/models/gemma-3-4b-it-Q4_K_M.gguf
 
         self.model_path = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
-        self.num_conversations = 100
         self.output_file = "persian_conversations.parquet"
 
-        self.n_ctx = 2048
+        self.num_conversations = 100
+        self.n_ctx = 8192
         self.n_threads = 4
         self.n_batch = 512
         self.n_gpu_layers = -1
 
-        self.max_turns = 16
-        self.max_tokens = 3000
+        self.max_turns = 24
+        self.max_tokens = 6144
         self.temperature = 0.75
 
         self.topics = [

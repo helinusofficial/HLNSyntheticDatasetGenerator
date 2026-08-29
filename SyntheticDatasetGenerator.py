@@ -1,5 +1,4 @@
 import os
-
 from llama_cpp import Llama
 from datetime import datetime
 import json

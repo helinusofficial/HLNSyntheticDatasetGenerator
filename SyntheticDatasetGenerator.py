@@ -9,7 +9,6 @@ class PersianConversationGenerator:
         self.config = config
         self.logger=logger
         self.model_path = self.config.model_path
-        self.num_conversations = self.config.num_conversations
         self.output_file = self.config.output_file
 
         self.topics = self.config.topics
@@ -64,29 +63,29 @@ class PersianConversationGenerator:
         self.logger.info(f"\nGeneration time: {elapsed.seconds // 60:02d}:{elapsed.seconds % 60:02d}")
         return topic, response
 
-    def generate_dataset(self, max_turns=None, max_tokens=None, temperature=None):
-        if max_turns is None:
+    def generate_dataset(self):
+        if self.config.max_turns is None:
             max_turns = self.config.max_turns
 
-        if max_tokens is None:
+        if self.config.max_tokens is None:
             max_tokens = self.config.max_tokens
 
-        if temperature is None:
+        if self.config.temperature is None:
             temperature = self.config.temperature
 
         dataset = []
 
         self.logger.info("=" * 60)
-        self.logger.info(f"Generating {self.num_conversations} conversations")
+        self.logger.info(f"Generating {self.config.num_conversations} conversations")
         self.logger.info(f"Output: {self.output_file}")
         self.logger.info("=" * 60)
 
-        for i in range(self.num_conversations):
+        for i in range(self.config.num_conversations):
             try:
                 topic, response = self.generate_conversation(conversation_index=i + 1,
-                                                             total_conversations=self.num_conversations,
-                                                             max_turns=max_turns, max_tokens=max_tokens,
-                                                             temperature=temperature)
+                                                             total_conversations=self.config.num_conversations,
+                                                             max_turns=self.config.max_turns, max_tokens=self.config.max_tokens,
+                                                             temperature=self.config.temperature)
                 clean_response = response.strip()
 
                 if clean_response.startswith("```"):

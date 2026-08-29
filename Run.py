@@ -18,9 +18,7 @@ def main():
 
         config = SyntheticDatasetConfig(logger)
         generator = PersianConversationGenerator(logger,config)
-
-        generator.generate_dataset( max_turns=4,  max_tokens=3000,
-                temperature=0.75)
+        generator.generate_dataset()
 
         end_time = time.time()
         end_datetime = datetime.now()

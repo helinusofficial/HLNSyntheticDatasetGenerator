@@ -21,7 +21,7 @@ class PersianConversationGenerator:
             n_threads=self.config.n_threads,
             n_batch=self.config.n_batch,
             n_gpu_layers=self.config.n_gpu_layers,
-            verbose=False
+            verbose=self.config.verbose
         )
         self.logger.info("Model loaded successfully!")
 

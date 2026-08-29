@@ -22,6 +22,8 @@ class SyntheticDatasetConfig:
         self.max_tokens = 6144
         self.temperature = 0.75
 
+        self.verbose=False
+
         self.topics = [
             "احوالپرسی",
             "معرفی خود",
@@ -322,6 +324,7 @@ class SyntheticDatasetConfig:
         lines.append(f"N_Batch                   : {self.n_batch}")
         lines.append(f"N_GPU_Layers              : {self.n_gpu_layers}")
         lines.append(f"Show_Generated_Output     : {self.Show_Generated_Output}")
+        lines.append(f"verbose                   : {self.verbose}")
 
         lines.append("")
         lines.append("[DATASET]")

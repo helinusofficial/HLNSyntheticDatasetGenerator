@@ -1,9 +1,11 @@
 from datetime import datetime
+
+from Configs import SyntheticDatasetConfig
+from SyntheticDatasetGenerator import PersianConversationGenerator
 from Utility.MyLogger import MyLogger
 import time
-from Configs import SyntheticDatasetConfig
-from SyntheticDatasetGenerator import SyntheticDatasetGenerator
 from Utility.TimeFormatHelper import TimeFormatHelper
+
 
 def main():
     try:
@@ -14,16 +16,17 @@ def main():
         logger, path = logger_obj.setup()
         logger.info(f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
 
-        syntheticDatasetConfig = SyntheticDatasetConfig(logger)
-        syntheticDatasetConfig.log()
-        generator = SyntheticDatasetGenerator(logger,syntheticDatasetConfig)
+        config = SyntheticDatasetConfig(logger)
+        generator = PersianConversationGenerator(logger,config)
 
-        generator.run()
+        generator.generate_dataset( max_turns=4,  max_tokens=3000,
+                temperature=0.75)
+
         end_time = time.time()
         end_datetime = datetime.now()
         elapsed = end_time - start_time
         logger.info(f"Finished: {end_datetime.strftime('%Y-%m-%d %H:%M:%S')} | "
-            f"Execution Time: {TimeFormatHelper.format_elapsed(elapsed)}\n")
+                    f"Execution Time: {TimeFormatHelper.format_elapsed(elapsed)}\n")
 
     except ValueError as error:
         print(f"ERROR: {error}")

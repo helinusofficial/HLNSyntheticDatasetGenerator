@@ -1,898 +1,167 @@
-import hashlib
-import json
-import logging
-import os
-import random
-import re
-import time
-import unicodedata
-from collections import Counter
-from typing import Any, Dict, List, Optional, Set, Tuple
-from datasets import Dataset, load_dataset
 from llama_cpp import Llama
+from datetime import datetime
+import json
+import pandas as pd
 
 
-class SyntheticDatasetGenerator:
-
-    def __init__(self,logger, cfg):
+class PersianConversationGenerator:
+    def __init__(self,logger, config):
+        self.config = config
         self.logger=logger
-        self.configs=cfg
+        self.model_path = self.config.model_path
+        self.num_conversations = self.config.num_conversations
+        self.output_file = self.config.output_file
 
-        self.max_attempts = max(
-            self.configs.total_samples,
-            int(
-                self.configs.total_samples *
-                self.configs.max_attempts_multiplier
-            )
-        )
-        self.random = random.Random(self.configs.seed)
-        self.llm = None
-        self.start_time = None
-        self.accepted = 0
-        self.attempts = 0
-        self.signatures: Set[str] = set()
-        self.user_signatures: Set[str] = set()
-        self.logger = logging.getLogger("SyntheticDatasetGenerator")
-        
-        if self.configs.language not in self.configs.language_configs:
-            raise ValueError(f"Unsupported language: {self.configs.language}")
+        self.topics = self.config.topics
 
-        self.selected_lang_config = self.configs.language_configs[self.configs.language]
-        self.topics = self.configs.topics[self.configs.language]
-        self.tasks = self.selected_lang_config["tasks"]
-        self.styles = self.selected_lang_config["styles"]
-        self.audiences = self.selected_lang_config["audiences"]
-        self.question_styles = self.selected_lang_config["question_styles"]
+        self.topic_index = 0
 
+        self.logger.info("Loading model...")
 
-        if not isinstance(self.topics, list) or not self.topics:
-            raise ValueError("Topics configuration must be a non-empty list")
-
-        self.topics = [str(topic).strip() for topic in self.topics if str(topic).strip()]
-
-    def _validate_config(self) -> None:
-        if not os.path.isfile(self.configs.model_path):
-            raise FileNotFoundError(f"Model file not found: {self.configs.model_path}")
-        if self.configs.total_samples <= 0:
-            raise ValueError("total_samples must be greater than zero")
-        if self.configs.n_ctx <= 0 or self.configs.n_threads <= 0 or self.configs.n_batch <= 0:
-            raise ValueError("n_ctx, n_threads and n_batch must be greater than zero")
-        if self.configs.max_tokens <= 0:
-            raise ValueError("max_tokens must be greater than zero")
-        if self.configs.max_attempts_multiplier < 1:
-            raise ValueError("max_attempts_multiplier must be at least 1")
-
-        if self.configs.retry_count <= 0:
-            raise ValueError("retry_count must be greater than zero")
-        if self.configs.shard_size <= 0:
-            raise ValueError("shard_size must be greater than zero")
-        if self.configs.checkpoint_interval <= 0:
-            raise ValueError("checkpoint_interval must be greater than zero")
-        if not 0.0 < self.configs.temperature <= 2.0:
-            raise ValueError("temperature must be between 0 and 2")
-        if not 0.0 < self.configs.top_p <= 1.0:
-            raise ValueError("top_p must be between 0 and 1")
-        if not 0.0 <= self.configs.min_p <= 1.0:
-            raise ValueError("min_p must be between 0 and 1")
-        if self.configs.max_turns < 2:
-            raise ValueError("max_turns must be at least 2")
-
-    def load_model(self) -> None:
-        self.logger.info(f"Loading generation model: {self.configs.model_path}")
         self.llm = Llama(
-            model_path=self.configs.model_path,
-            n_ctx=self.configs.n_ctx,
-            n_threads=self.configs.n_threads,
-            n_batch=self.configs.n_batch,
-            n_gpu_layers=self.configs.n_gpu_layers,
-            use_mmap=self.configs.load_model_use_mmap,
-            use_mlock=self.configs.load_model_use_mlock,
-            verbose=self.configs.load_model_verbose,
-            seed=self.configs.seed
-        )
-        self.logger.info("Generation model loaded successfully")
-
-    def _normalize_text(self, text: str) -> str:
-        text = unicodedata.normalize("NFKC", text)
-        text = text.replace("ي", "ی").replace("ى", "ی").replace("ك", "ک").replace("ۀ", "ه").replace("ة", "ه").replace("ـ", "")
-        text = text.replace("\u200d", "").replace("\u200e", "").replace("\u200f", "")
-        text = re.sub(r"[ \t\r\n]+", " ", text)
-        text = re.sub(r"\s+([،؛؟,.!?])", r"\1", text)
-        text = re.sub(r"([،؛؟,.!?])\1+", r"\1", text)
-        return text.strip().casefold()
-
-    def _normalize_persian_text(self, text: str) -> str:
-        text = unicodedata.normalize("NFKC", text)
-        text = text.replace("ي", "ی").replace("ى", "ی").replace("ك", "ک").replace("ۀ", "ه").replace("ة", "ه").replace("ـ", "")
-        text = text.replace("‌", "\u200c")
-        text = re.sub(r"[ \t]+", " ", text)
-        text = re.sub(r" +([،؛؟])", r"\1", text)
-        text = re.sub(r"([،؛؟]) +", r"\1 ", text)
-        return text.strip()
-
-    def _words(self, text: str) -> List[str]:
-        return re.findall(r"\S+", self._normalize_text(text))
-
-    def _word_count(self, text: str) -> int:
-        return len(self._words(text))
-
-    def _persian_letter_ratio(self, text: str) -> float:
-        letters = [c for c in text if c.isalpha()]
-        if not letters:
-            return 0.0
-        persian = sum(1 for c in letters if "\u0600" <= c <= "\u06ff")
-        return persian / len(letters)
-
-    def _arabic_character_ratio(self, text: str) -> float:
-        chars = [c for c in text if c.isalpha()]
-        if not chars:
-            return 0.0
-        arabic = sum(1 for c in chars if c in "يىكؤإأة")
-        return arabic / len(chars)
-
-    def _persian_spacing_score(self, text: str) -> float:
-        if self.configs.language != "fa" or not text or not text.strip():
-            return 1.0
-        text = self._normalize_persian_text(text)
-        zwnj = "\u200c"
-        possible = 0
-        correct = 0
-        words = self._words(text)
-        if len(words) < 20:
-            return 1.0
-
-        for word in words:
-            if word.startswith("می" + zwnj) or word.startswith("نمی" + zwnj):
-                stem = word.split(zwnj, 1)[1]
-                if len(stem) >= 3:
-                    possible += 1
-                    correct += 1
-            elif word.startswith(("می", "نمی")) and len(word) >= 5 and word not in self.configs.lexical_mi:
-                possible += 1
-            if word.endswith(zwnj + "ها") or word.endswith(zwnj + "های"):
-                possible += 1
-                correct += 1
-            elif word.endswith(("ها", "های")) and len(word) > 4:
-                possible += 1
-            if word.endswith(zwnj + "تر") or word.endswith(zwnj + "ترین"):
-                possible += 1
-                correct += 1
-            elif word.endswith(("تر", "ترین")) and word not in self.configs.comparative_exceptions and len(word) > 5:
-                possible += 1
-        separated_prefixes = re.findall(r"(?<![\u0600-\u06FF])(می|نمی)\s+([\u0600-\u06FF]{3,})(?![\u0600-\u06FF])",
-                                        text)
-        possible += len([m for m in separated_prefixes if m[1] not in {"وه", "ان", "هن", "زان", "دان"}])
-        separated_plural = re.findall(r"([\u0600-\u06FF]{2,})\s+(ها|های)(?![\u0600-\u06FF])", text)
-        possible += len(separated_plural)
-        separated_comparative = re.findall(r"([\u0600-\u06FF]{3,})\s+(تر|ترین)(?![\u0600-\u06FF])", text)
-        possible += sum(1 for stem, suffix in separated_comparative if stem + suffix not in self.configs.comparative_exceptions)
-        invalid_zwnj = len(
-            re.findall(rf"{zwnj}{{2,}}|{zwnj}\s|\s{zwnj}|(?<![\u0600-\u06FF]){zwnj}|{zwnj}(?![\u0600-\u06FF])", text))
-        possible += invalid_zwnj
-        if possible == 0:
-            return 1.0
-        return round(max(0.0, min(1.0, correct / possible)), 4)
-
-    def _contains_bad_pattern(self, text: str) -> bool:
-        normalized = self._normalize_text(text)
-        return any(self._normalize_text(pattern) in normalized for pattern in self.selected_lang_config["bad_patterns"])
-
-    def _repetition_ratio(self, text: str) -> float:
-        words = self._words(text)
-        if len(words) < 20:
-            return 0.0
-        counts = Counter(words)
-        repeated = sum(v - 1 for v in counts.values() if v > 1)
-        return repeated / len(words)
-
-    def _sentence_repetition_ratio(self, text: str) -> float:
-        sentences = [self._normalize_text(x) for x in re.split(r"[.!?؟\n]+", text) if self._normalize_text(x)]
-        if len(sentences) < 4:
-            return 0.0
-        counts = Counter(sentences)
-        repeated = sum(v - 1 for v in counts.values() if v > 1)
-        return repeated / len(sentences)
-
-    def _has_excessive_latin(self, text: str) -> bool:
-        if self.configs.language != "fa":
-            return False
-        words = self._words(text)
-        if not words:
-            return True
-        latin_words = sum(1 for word in words if re.search(r"[a-zA-Z]", word))
-        return latin_words / len(words) > 0.28
-
-    def _has_invalid_persian_characters(self, text: str) -> bool:
-        if self.configs.language != "fa":
-            return False
-        return any(char in text for char in ["ي", "ك", "ى", "ة"])
-
-    def _has_bad_punctuation(self, text: str) -> bool:
-        if self.configs.language != "fa":
-            return False
-        if "؟؟؟" in text or "!!!" in text:
-            return True
-        if text.count("...") > 4:
-            return True
-        if re.search(r" {2,}", text):
-            return True
-        return False
-
-    def _language_quality(self, text: str) -> float:
-        if self.configs.language != "fa":
-            return 1.0
-        score = self._persian_letter_ratio(text)
-        if self._has_invalid_persian_characters(text):
-            score -= 0.15
-        if self._has_excessive_latin(text):
-            score -= 0.15
-        if self._has_bad_punctuation(text):
-            score -= 0.08
-        return max(0.0, min(1.0, score))
-
-    def _build_prompt(self, topic: str, task: str, style: str, difficulty: str,
-                      audience: str, question_style: str, index: int) -> str:
-
-        prompt_config = self.configs.prompt_config[self.configs.language]
-
-        intro = prompt_config["intro"]
-
-        turn_instruction = prompt_config["turn_instruction"].format(
-            max_turns=self.configs.max_turns
+            model_path=self.config.model_path,
+            n_ctx=self.config.n_ctx,
+            n_threads=self.config.n_threads,
+            n_batch=self.config.n_batch,
+            n_gpu_layers=self.config.n_gpu_layers,
+            verbose=False
         )
 
-        instructions = prompt_config["instructions"]
-        output = prompt_config["output"]
-        continuation = prompt_config["continuation"]
+        self.logger.info("Model loaded successfully!")
 
-        if self.configs.language == "fa":
-            return f"""/no_think
-            {intro}
+    def get_next_topic(self):
+        topic = self.topics[self.topic_index]
 
-    زبان هدف: فارسی
-    موضوع: {topic}
-    نوع کار: {task}
-    سطح دشواری: {difficulty}
-    مخاطب: {audience}
-    سبک پاسخ: {style}
-    نوع سؤال: {question_style}
-    شناسه تنوع: {index}
+        self.topic_index += 1
 
-    {turn_instruction}
+        if self.topic_index >= len(self.topics):
+            self.topic_index = 0
 
-    {instructions}
+        return topic
 
-    {output}
+    def generate_conversation(self, max_turns=None, max_tokens=None, temperature=None):
+        if max_turns is None:
+            max_turns = self.config.max_turns
 
-    {continuation}
-    """
+        if max_tokens is None:
+            max_tokens = self.config.max_tokens
 
-        return f"""/no_think
-        {intro}
+        if temperature is None:
+            temperature = self.config.temperature
 
-    Target language: {self.selected_lang_config['name']}
-    Topic: {topic}
-    Task type: {task}
-    Difficulty: {difficulty}
-    Audience: {audience}
-    Response style: {style}
-    Question style: {question_style}
-    Variation ID: {index}
+        max_turns = min(max_turns, 16)
+        max_messages = max_turns * 2
 
-    {turn_instruction}
+        topic = self.get_next_topic()
 
-    {instructions}
+        self.logger.info(f"\nTopic: {topic}")
 
-    {output}
-
-    {continuation}
-    """
-
-    def _validate_structure(self, sample: Any) -> Tuple[bool, str]:
-        if not isinstance(sample, dict):
-            return False, "not_object"
-
-        messages = sample.get("messages")
-
-        if not isinstance(messages, list):
-            return False, "invalid_messages"
-
-        turns = len(messages) // 2
-
-        if turns < 2 or turns > self.configs.max_turns:
-            return False, "invalid_multi_turn_turn_count"
-
-        if len(messages) % 2 != 0:
-            return False, "invalid_message_count"
-
-        for i, message in enumerate(messages):
-            if not isinstance(message, dict):
-                return False, "invalid_message_objects"
-
-            if set(message.keys()) != {"role", "content"}:
-                return False, "invalid_keys"
-
-            if not isinstance(message.get("content"), str):
-                return False, "invalid_content_type"
-
-            if not message["content"].strip():
-                return False, "empty_content"
-
-            expected_role = "user" if i % 2 == 0 else "assistant"
-
-            if message.get("role") != expected_role:
-                return False, "invalid_roles"
-
-        return True, "ok"
-
-    def _validate_language(self, sample: Dict[str, Any]) -> Tuple[bool, str]:
-        messages = sample["messages"]
-
-        for i, message in enumerate(messages):
-            text = message["content"]
-
-            if self.configs.language == "fa":
-                if self._persian_letter_ratio(text) < 0.58:
-                    return False, f"message_{i}_not_persian"
-
-                if self._arabic_character_ratio(text) > 0.03:
-                    return False, f"message_{i}_arabic_characters"
-
-                if self._has_excessive_latin(text):
-                    return False, f"message_{i}_excessive_latin"
-
-                if self._has_invalid_persian_characters(text):
-                    return False, f"message_{i}_invalid_persian_characters"
-
-        return True, "ok"
-
-    def _quality_score(self, sample: Dict[str, Any]) -> int:
-        messages = sample["messages"]
-
-        score = 100
-
-        user_messages = [
-            message["content"]
-            for message in messages
-            if message["role"] == "user"
+        messages = [
+            {
+                "role": "system",
+                "content": self.config.system_prompt
+            },
+            {
+                "role": "user",
+                "content": self.config.conversation_prompt.format(
+                    topic=topic,
+                    max_turns=max_turns,
+                    max_messages=max_messages
+                )
+            }
         ]
 
-        assistant_messages = [
-            message["content"]
-            for message in messages
-            if message["role"] == "assistant"
-        ]
+        start_time = datetime.now()
 
-        all_assistant_text = "\n".join(assistant_messages)
-        all_user_text = "\n".join(user_messages)
-
-        assistant_words = self._word_count(all_assistant_text)
-        user_words = self._word_count(all_user_text)
-
-        unique_ratio = len(set(self._words(all_assistant_text))) / max(1, assistant_words)
-
-        if self._repetition_ratio(all_assistant_text) > 0.22:
-            score -= 15
-
-        if self._sentence_repetition_ratio(all_assistant_text) > 0.15:
-            score -= 15
-
-        if unique_ratio < 0.42:
-            score -= 12
-
-        if self._contains_bad_pattern(all_assistant_text):
-            score -= 30
-
-        if self._has_bad_punctuation(all_assistant_text):
-            score -= 8
-
-        if self.configs.language == "fa":
-            if self._language_quality(all_user_text) < 0.72:
-                score -= 10
-
-            if self._language_quality(all_assistant_text) < 0.72:
-                score -= 10
-
-            if assistant_words > 60 and self._persian_spacing_score(all_assistant_text) < 0.25:
-                score -= 3
-
-        if user_words < 8:
-            score -= 5
-
-        if assistant_words < 30:
-            score -= 8
-
-        if assistant_words > 750 * max(1, len(assistant_messages)):
-            score -= 5
-
-        return max(0, min(100, score))
-
-    def _normalize_sample(self, sample: Dict[str, Any]) -> Dict[str, Any]:
-        normalized_messages = []
-
-        for message in sample["messages"]:
-            content = message["content"].strip()
-
-            if self.configs.language == "fa":
-                content = self._normalize_persian_text(content)
-            else:
-                content = unicodedata.normalize("NFKC", content)
-
-            normalized_messages.append({"role": message["role"],"content": content})
-
-        return {"messages": normalized_messages}
-
-    def _signature(self, sample: Dict[str, Any]) -> str:
-        parts = []
-
-        for message in sample["messages"]:
-            parts.append(f"{message['role']}:{self._normalize_text(message['content'])}")
-
-        return hashlib.sha256("\n".join(parts).encode("utf-8")).hexdigest()
-
-    def _user_signature(self, sample: Dict[str, Any]) -> str:
-        user_messages = [
-            self._normalize_text(message["content"])
-            for message in sample["messages"]
-            if message["role"] == "user"
-        ]
-        return hashlib.sha256("\n".join(user_messages).encode("utf-8")).hexdigest()
-
-    def _generate_sample(self, index: int) -> Dict[str, Any]:
-        perf_start = time.perf_counter()
-
-        topic = self.random.choice(self.topics)
-        task = self.random.choice(self.tasks)
-        style = self.random.choice(self.styles)
-        difficulty = self.random.choice(self.configs.difficulties[self.configs.language])
-        audience = self.random.choice(self.audiences)
-        question_style = self.random.choice(self.question_styles)
-
-        t = time.perf_counter()
-        prompt = self._build_prompt(
-            topic, task, style, difficulty,
-            audience, question_style, index
-        )
-        prompt_time = time.perf_counter() - t
-
-        self.logger.info(
-            f"Generating sample: index={index}, topic={topic}, "
-            f"task={task}, retry_count={self.configs.retry_count}"
+        output = self.llm.create_chat_completion(
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            stream=True
         )
 
-        for retry in range(self.configs.retry_count):
+        response = ""
+
+        for chunk in output:
+            content = chunk["choices"][0]["delta"].get("content", "")
+
+            if content:
+                response += content
+                self.logger.info(content, end="", flush=True)
+
+        elapsed = datetime.now() - start_time
+
+        self.logger.info(f"\nGeneration time: {elapsed.seconds // 60:02d}:{elapsed.seconds % 60:02d}")
+
+        return topic, response
+
+    def generate_dataset(self, max_turns=None, max_tokens=None, temperature=None):
+        if max_turns is None:
+            max_turns = self.config.max_turns
+
+        if max_tokens is None:
+            max_tokens = self.config.max_tokens
+
+        if temperature is None:
+            temperature = self.config.temperature
+
+        dataset = []
+
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info(f"Generating {self.num_conversations} conversations")
+        self.logger.info(f"Output: {self.output_file}")
+        self.logger.info("=" * 60)
+
+        for i in range(self.num_conversations):
+            self.logger.info(f"\n\n[{i + 1}/{self.num_conversations}]")
+
             try:
-                self.logger.info(
-                    f"Generation attempt: index={index}, "
-                    f"retry={retry + 1}/{self.configs.retry_count}"
-                )
+                topic, response = self.generate_conversation(max_turns=max_turns, max_tokens=max_tokens, temperature=temperature)
 
-                temperature = min(
-                    self.configs.generation_config["temperature_max"],
-                    max(
-                        self.configs.generation_config["temperature_min"],
-                        self.configs.temperature
-                        + self.random.uniform(
-                            -self.configs.generation_config["temperature_variation"],
-                            self.configs.generation_config["temperature_variation"]
-                        )
-                    )
-                )
+                clean_response = response.strip()
 
-                self.logger.info("=" * 80)
-                self.logger.info(
-                    f"Start Generation | index={index} | "
-                    f"retry={retry + 1}/{self.configs.retry_count}"
-                )
-                self.logger.info("=" * 80)
+                if clean_response.startswith("```"):
+                    clean_response = clean_response.replace("```json", "")
+                    clean_response = clean_response.replace("```", "")
+                    clean_response = clean_response.strip()
 
-                generation_start = time.perf_counter()
+                conversation = json.loads(clean_response)
 
-                t_before_call = time.perf_counter()
-
-                stream = self.llm.create_chat_completion(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": (
-                                f"{self.configs.system_prompt}\n\n"
-                                f"Your target language is {self.selected_lang_config['name']}.\n"
-                                f"{self.selected_lang_config['prompt']}"
-                            )
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-                    temperature=temperature,
-                    top_p=self.configs.top_p,
-                    min_p=self.configs.min_p,
-                    repeat_penalty=self.configs.repeat_penalty,
-                    max_tokens=self.configs.max_tokens,
-                    response_format=self.configs.generation_config["response_format"],
-                    seed=self.configs.seed + index * 100 + retry,
-                    stream=True,
-                )
-
-                stream_ready_time = time.perf_counter()
-                raw_parts = []
-                chunk_count = 0
-                first_token_time = None
-
-                for chunk in stream:
-                    content = chunk["choices"][0]["delta"].get("content", "")
-
-                    if not content:
-                        continue
-
-                    now = time.perf_counter()
-
-                    if first_token_time is None:
-                        first_token_time = now
-
-                        self.logger.info(
-                            f"First content token: "
-                            f"{time.strftime('%H:%M:%S', time.gmtime(first_token_time - generation_start))}"
-                        )
-
-                        self.logger.info(
-                            f"Time from stream creation to first token: "
-                            f"{time.strftime('%H:%M:%S', time.gmtime(first_token_time - stream_ready_time))}"
-                        )
-
-                        self.logger.info("-" * 80)
-
-                    raw_parts.append(content)
-                    chunk_count += 1
-
-                generation_end = time.perf_counter()
-
-                raw = "".join(raw_parts).strip()
-
-                total_time = generation_end - generation_start
-
-                first_token_delay = (
-                    first_token_time - generation_start
-                    if first_token_time
-                    else total_time
-                )
-
-                generation_only_time = (
-                    generation_end - first_token_time
-                    if first_token_time
-                    else total_time
-                )
-
-                speed = chunk_count / max(0.001, generation_only_time)
-
-                self.logger.info("-" * 80)
-
-                self.logger.info(
-                    f"\nGeneration complete:\n"
-                    f"create_chat_completion : {time.strftime('%H:%M:%S', time.gmtime(stream_ready_time - t_before_call))}\n"
-                    f"first token            : {time.strftime('%H:%M:%S', time.gmtime(first_token_delay))}\n"
-                    f"generation only        : {time.strftime('%H:%M:%S', time.gmtime(generation_only_time))}\n"
-                    f"total                  : {time.strftime('%H:%M:%S', time.gmtime(total_time))}\n"
-                    f"chunks                 : {chunk_count}\n"
-                    f"chars                  : {len(raw)}\n"
-                    f"chunks/sec             : {speed:.4f}"
-                )
-
-                self.logger.info("=" * 80)
-
-                t = time.perf_counter()
-
-                try:
-                    sample = json.loads(raw)
-                except json.JSONDecodeError as exc:
-                    json_time = time.perf_counter() - t
-
-                    self.logger.error(
-                        "\n"
-                        "================ JSON PARSE FAILED ================\n"
-                        f"index              : {index}\n"
-                        f"retry              : {retry + 1}/{self.configs.retry_count}\n"
-                        f"raw length         : {len(raw)}\n"
-                        f"json error         : {exc}\n"
-                        f"error position     : line={exc.lineno}, column={exc.colno}, char={exc.pos}\n"
-                        f"raw output:\n{raw}\n"
-                        "====================================================="
-                    )
-
-                    self.configs.stats["json_failed"] += 1
+                if "messages" not in conversation:
+                    self.logger.info("Invalid response: messages not found")
                     continue
 
-                json_time = time.perf_counter() - t
-
-                self.logger.info(
-                    f"JSON parse: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(json_time))}"
-                )
-
-                t = time.perf_counter()
-
-                valid, reason = self._validate_structure(sample)
-
-                structure_time = time.perf_counter() - t
-
-                self.logger.info(
-                    f"Structure validation: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(structure_time))} | valid={valid} | reason={reason}"
-                )
-
-                if not valid:
-                    self.configs.stats["validation_failed"] += 1
+                if not isinstance(conversation["messages"], list):
+                    self.logger.info("Invalid response: messages is not a list")
                     continue
 
-                t = time.perf_counter()
+                conversation["messages"] = conversation["messages"][:32]
 
-                sample = self._normalize_sample(sample)
+                dataset.append({
+                    "id": i + 1,
+                    "topic": topic,
+                    "messages": json.dumps(conversation["messages"], ensure_ascii=False)
+                })
 
-                normalize_time = time.perf_counter() - t
+                self.logger.info("\nConversation saved successfully.")
 
-                self.logger.info(
-                    f"Normalize: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(normalize_time))}"
-                )
+            except json.JSONDecodeError:
+                self.logger.info("\nERROR: Model returned invalid JSON.")
+                self.logger.info("Conversation skipped.")
 
-                t = time.perf_counter()
+            except Exception as e:
+                self.logger.info(f"\nERROR: {e}")
+                self.logger.info("Conversation skipped.")
 
-                valid, reason = self._validate_language(sample)
+        df = pd.DataFrame(dataset)
 
-                language_time = time.perf_counter() - t
+        df.to_parquet(self.output_file, index=False)
 
-                self.logger.info(
-                    f"Language validation: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(language_time))} | valid={valid} | reason={reason}"
-                )
+        self.logger.info("\n" + "=" * 60)
+        self.logger.info("DATASET COMPLETED")
+        self.logger.info("=" * 60)
+        self.logger.info(f"Generated: {len(df)} conversations")
+        self.logger.info(f"File: {self.output_file}")
+        self.logger.info("=" * 60)
 
-                if not valid:
-                    self.configs.stats["language_failed"] += 1
-                    continue
-
-                t = time.perf_counter()
-
-                quality_score = self._quality_score(sample)
-
-                quality_time = time.perf_counter() - t
-
-                self.logger.info(
-                    f"Quality score: "
-                    f"{time.strftime('%H:%M:%S', time.gmtime(quality_time))} | score={quality_score}"
-                )
-
-                if quality_score < self.configs.min_quality_score:
-                    self.configs.stats["quality_failed"] += 1
-                    continue
-
-
-
-                total_sample_time = time.perf_counter() - perf_start
-
-                self.logger.info(
-                    f"\n******** SAMPLE ACCEPTED ********\n"
-                    f"Index             : {index}\n"
-                    f"Retry             : {retry + 1}\n"
-                    f"Prompt build      : {time.strftime('%H:%M:%S', time.gmtime(prompt_time))}\n"
-                    f"Generation        : {time.strftime('%H:%M:%S', time.gmtime(total_time))}\n"
-                    f"JSON              : {time.strftime('%H:%M:%S', time.gmtime(json_time))}\n"
-                    f"Structure         : {time.strftime('%H:%M:%S', time.gmtime(structure_time))}\n"
-                    f"Normalize         : {time.strftime('%H:%M:%S', time.gmtime(normalize_time))}\n"
-                    f"Language          : {time.strftime('%H:%M:%S', time.gmtime(language_time))}\n"
-                    f"Quality           : {time.strftime('%H:%M:%S', time.gmtime(quality_time))}\n"
-                    f"Total sample      : {time.strftime('%H:%M:%S', time.gmtime(total_sample_time))}\n"
-                    f"********************************"
-                )
-
-                self.logger.info(
-                    f"Sample accepted: index={index}, retry={retry + 1}"
-                )
-
-                return sample
-
-            except Exception as exc:
-                self.configs.stats["generation_failed"] += 1
-
-                self.logger.info(
-                    f"Generation error: "
-                    f"index={index}, retry={retry + 1}, error={exc}"
-                )
-
-                self.logger.warning(
-                    "Generation failure index=%s retry=%s error=%s",
-                    index,
-                    retry + 1,
-                    exc
-                )
-
-        self.logger.info(
-            f"Sample generation failed after "
-            f"{self.configs.retry_count} retries: index={index}"
-        )
-
-        return {}
-
-    def _output_dir(self) -> str:
-        directory = os.path.dirname(self.configs.output_path) or "."
-        os.makedirs(directory, exist_ok=True)
-        return directory
-
-    def _checkpoint_dir(self) -> str:
-        directory = os.path.join(self._output_dir(), ".checkpoints")
-        os.makedirs(directory, exist_ok=True)
-        return directory
-
-    def _checkpoint_path(self) -> str:
-        return os.path.join(self._checkpoint_dir(), "state.json")
-
-    def _shard_path(self, index: int) -> str:
-        base = os.path.splitext(os.path.basename(self.configs.output_path))[0]
-        return os.path.join(self._output_dir(), f"{base}-{index:06d}.parquet")
-
-    def _existing_shards(self) -> List[str]:
-        base = os.path.splitext(os.path.basename(self.configs.output_path))[0]
-        pattern = re.compile(rf"^{re.escape(base)}-\d{{6}}\.parquet$")
-        return sorted(os.path.join(self._output_dir(), name) for name in os.listdir(self._output_dir()) if pattern.fullmatch(name))
-
-    def _save_shard(self, samples: List[Dict[str, Any]], index: int) -> None:
-        if not samples:
-            return
-        path = self._shard_path(index)
-        temporary = f"{path}.tmp"
-        self.logger.info(f"Saving shard {index}: {path}")
-        Dataset.from_list(samples).to_parquet(temporary)
-        os.replace(temporary, path)
-        self.logger.info(f"Shard {index} saved successfully: {len(samples)} samples")
-
-    def _load_checkpoint(self) -> None:
-        if not self.configs.resume:
-            self.logger.info("Resume disabled. Starting from scratch.")
-            return
-
-        path = self._checkpoint_path()
-
-        if not os.path.isfile(path):
-            self.logger.info("No checkpoint found. Starting from scratch.")
-            return
-
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                state = json.load(f)
-
-            self.accepted = int(state.get("accepted", 0))
-            self.attempts = int(state.get("attempts", 0))
-
-            self.signatures = set(
-                state.get("signatures", [])
-            )
-
-            self.user_signatures = set(
-                state.get("user_signatures", [])
-            )
-
-            saved_stats = state.get("stats", {})
-
-            if isinstance(saved_stats, dict):
-                self.configs.stats.update(saved_stats)
-
-            self.logger.info(
-                f"Checkpoint loaded successfully: "
-                f"accepted={self.accepted}, "
-                f"attempts={self.attempts}, "
-                f"signatures={len(self.signatures)}, "
-                f"user_signatures={len(self.user_signatures)}"
-            )
-
-        except Exception as exc:
-            self.logger.exception(
-                f"Failed to load checkpoint: {path} | error={exc}"
-            )
-            raise
-    def _save_checkpoint(self) -> None:
-        state = {
-            "accepted": self.accepted,
-            "attempts": self.attempts,
-            "stats": self.configs.stats,
-            "signatures": list(self.signatures),
-            "user_signatures": list(self.user_signatures)
-        }
-
-        temporary = f"{self._checkpoint_path()}.tmp"
-
-        self.logger.info(
-            f"Saving checkpoint: "
-            f"accepted={self.accepted}, "
-            f"attempts={self.attempts}"
-        )
-
-        with open(temporary, "w", encoding="utf-8") as f:
-            json.dump(
-                state,
-                f,
-                ensure_ascii=False,
-                indent=2
-            )
-
-        os.replace(
-            temporary,
-            self._checkpoint_path()
-        )
-
-    def run(self) -> None:
-        self._validate_config()
-        self.start_time = time.time()
-        self.logger.info("=" * 80)
-        self.logger.info("Starting synthetic dataset generation")
-        self.logger.info(f"Target samples: {self.configs.total_samples}")
-        self.logger.info(f"Language: {self.configs.language}")
-        self.logger.info(f"Output: {self.configs.output_path}")
-        self.logger.info("=" * 80)
-
-        self.load_model()
-
-        existing_shards = self._existing_shards()
-
-        if existing_shards:
-            self.logger.info(
-                f"Found {len(existing_shards)} existing shard(s)"
-            )
-
-        self._load_checkpoint()
-
-        current_shard: List[Dict[str, Any]] = []
-        shard_index = len(existing_shards)
-
-        while self.accepted < self.configs.total_samples and self.attempts < self.max_attempts:
-            self.attempts += 1
-            self.configs.stats["attempts"] = self.attempts
-
-            sample = self._generate_sample(self.attempts)
-
-            if not sample:
-                continue
-
-            signature = self._signature(sample)
-            user_signature = self._user_signature(sample)
-
-            if signature in self.signatures or user_signature in self.user_signatures:
-                self.configs.stats["duplicate_failed"] += 1
-                self.logger.info(f"Duplicate sample rejected: index={self.attempts}")
-                continue
-
-            self.signatures.add(signature)
-            self.user_signatures.add(user_signature)
-
-            current_shard.append(sample)
-
-            self.accepted += 1
-            self.configs.stats["accepted"] = self.accepted
-            next_index = self.accepted
-
-            self.logger.info(
-                f"Accepted: {self.accepted}/{self.configs.total_samples} "
-                f"| Attempts: {self.attempts}/{self.max_attempts}"
-            )
-
-            if len(current_shard) >= self.configs.shard_size:
-                self._save_shard(current_shard, shard_index)
-                shard_index += 1
-                current_shard = []
-
-            if self.accepted % self.configs.checkpoint_interval == 0:
-                self._save_checkpoint(next_index)
-
-        if current_shard:
-            self._save_shard(current_shard, shard_index)
-
-        self._save_checkpoint()
-
-        elapsed = time.time() - self.start_time
-
-        self.logger.info("=" * 80)
-        self.logger.info("Generation finished")
-        self.logger.info(f"Accepted samples: {self.accepted}")
-        self.logger.info(f"Total attempts: {self.attempts}")
-        self.logger.info(f"Elapsed time: {elapsed:.2f} seconds")
-        self.logger.info(f"Stats: {self.configs.stats}")
-        self.logger.info("=" * 80)
+        return df

@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from pathlib import Path
 from Configs import SyntheticDatasetConfig
 from SyntheticDatasetGenerator import PersianConversationGenerator
 from Utility.MyLogger import MyLogger
@@ -12,11 +12,12 @@ def main():
         start_time = time.time()
         start_datetime = datetime.now()
 
-        logger_obj = MyLogger(log_dir=r"SyntheticDatasetGenerator_log", log_file_name="logs.txt")
+        logger_obj = MyLogger(log_dir="/content/mydrive/MyDrive/Colab Notebooks/HLNSyntheticDatasetGenerator/logs", log_file_name="logs.txt")
         logger, path = logger_obj.setup()
         logger.info(f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
 
         config = SyntheticDatasetConfig(logger)
+        path = Path(path)
         config.output_file=path/config.output_file
         generator = PersianConversationGenerator(logger,config)
         generator.generate_dataset()

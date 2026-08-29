@@ -64,8 +64,6 @@ class PersianConversationGenerator:
         return topic, response
 
     def generate_dataset(self):
-        if self.config.max_turns is None:
-            max_turns = self.config.max_turns
         if self.config.max_tokens is None:
             max_tokens = self.config.max_tokens
         if self.config.temperature is None:
@@ -107,12 +105,12 @@ class PersianConversationGenerator:
                     "messages": json.dumps(conversation["messages"], ensure_ascii=False)
                 })
 
-                self.logger.info("\nConversation saved successfully.")
+                self.logger.info("Conversation saved successfully.")
             except json.JSONDecodeError:
-                self.logger.info("\nError: Model returned invalid JSON.")
+                self.logger.info("Error: Model returned invalid JSON.")
                 self.logger.info("Conversation skipped.")
             except Exception as e:
-                self.logger.info(f"\nError: {e}")
+                self.logger.info(f"Error: {e}")
                 self.logger.info("Conversation skipped.")
 
         df = pd.DataFrame(dataset)

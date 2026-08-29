@@ -12,16 +12,18 @@ def main():
         start_time = time.time()
         start_datetime = datetime.now()
 
-        logger_obj = MyLogger(log_dir="/content/mydrive/MyDrive/Colab Notebooks/HLNSyntheticDatasetGenerator/alllogs", log_file_name="logs.txt")
+        logger_obj = MyLogger(log_dir="alllogs", log_file_name="logs.txt")
         logger, path = logger_obj.setup()
         logger.info(f"Started: {start_datetime.strftime('%Y-%m-%d %H:%M:%S')}")
 
         configs = SyntheticDatasetConfig(logger)
         configs.log()
         path = Path(path)
-        configs.output_temp_file = path
-        configs.output_file=path/configs.output_file
-        generator = PersianConversationGenerator(logger,configs)
+
+        configs.output_file = path / configs.output_file
+        configs.output_temp_file = Path(str(configs.output_file) + ".tmp")
+
+        generator = PersianConversationGenerator(logger, configs)
         generator.generate_dataset()
 
         end_time = time.time()

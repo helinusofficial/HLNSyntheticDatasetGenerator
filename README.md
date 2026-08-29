@@ -1,368 +1,1063 @@
 # Helinus Synthetic Dataset Generator
 
-A production-ready pipeline for generating synthetic instruction-tuning datasets from local GGUF language models using `llama.cpp`.
+A local synthetic conversation dataset generator for creating Persian instruction-tuning and chat datasets from GGUF-compatible language models using `llama.cpp`.
 
-The generator creates high-quality synthetic **user-assistant conversation datasets** designed for:
+The project uses a local LLM to generate structured Persian user-assistant conversations based on configurable topics and saves the generated dataset in **Parquet** format.
 
-- Instruction Tuning
-- Supervised Fine-Tuning (SFT)
-- Chat model adaptation
-- Domain-specific language model training
+The generator is designed for:
 
-The pipeline runs fully locally with GGUF-compatible models and automatically handles:
+* Instruction Tuning
+* Supervised Fine-Tuning (SFT)
+* Persian Chat Model Training
+* Domain-Specific Dataset Generation
+* Synthetic Conversation Generation
 
-- Dataset generation
-- JSON parsing
-- Schema validation
-- Text normalization
-- Language validation
-- Quality filtering
-- Duplicate detection
-- Checkpointing
-- Parquet export
-
-The generator is model-agnostic and supports different GGUF models.  
-The default example configuration uses:
-
-`Qwen3-8B-Q6_K.gguf`
+The entire generation process runs locally using a GGUF model through `llama-cpp-python`.
 
 ---
 
 ## Features
 
-- Local GGUF inference using `llama.cpp`
-- Persian and English dataset generation
-- Configurable topics, tasks, styles, audiences, and question types
-- Single-turn and multi-turn conversation generation
-- Strict JSON output enforcement
-- Message structure validation
-- Language consistency checking
-- Persian text normalization
-- Character and punctuation normalization
-- Word length constraints
-- Quality scoring and filtering
-- Duplicate conversation detection
-- Duplicate user question detection
-- Automatic retry mechanism
-- Checkpoint and resume support
-- Sharded Parquet export
-- Optional LLM-based quality evaluation
-- Reproducible generation with configurable seeds
+* Local GGUF model inference using `llama.cpp`
+* Persian conversation generation
+* Configurable conversation topics
+* Configurable number of conversations
+* Configurable number of conversation turns
+* Configurable maximum generated tokens
+* Configurable temperature
+* Streaming model generation
+* Structured JSON output
+* Conversation schema validation
+* Automatic removal of Markdown code fences from model output
+* Maximum message limit per conversation
+* Parquet dataset export
+* Automatic checkpointing after every successfully generated conversation
+* Resume generation from an existing Parquet file
+* Logging of generation progress and errors
+* Configurable CPU and GPU inference
+* Support for different GGUF-compatible models
 
 ---
 
-## Generation Pipeline
+## How It Works
+
+The generator follows this workflow:
 
 ```text
-Generate Samples
+Load Configuration
+        ↓
+Load GGUF Model
+        ↓
+Select Next Topic
+        ↓
+Build System + User Prompts
+        ↓
+Generate Conversation
         ↓
 Parse JSON
         ↓
-Validate Structure
+Validate "messages"
         ↓
-Normalize Text
+Limit Messages
         ↓
-Validate Language
+Save to Parquet
         ↓
-Quality Scoring
-        ↓
-Duplicate Detection
-        ↓
-Save Checkpoint
-        ↓
-Export Dataset
+Continue / Resume
 ```
 
 ---
 
 ## Requirements
 
-- Python 3.10+
-- GGUF-compatible language model
-- llama-cpp-python
-- datasets
-- pyarrow
+* Python 3.10+
+* A GGUF-compatible language model
+* `llama-cpp-python`
+* `pandas`
+* `pyarrow`
+
+The project also uses Python standard-library modules such as:
+
+* `json`
+* `os`
+* `time`
+* `datetime`
+* `pathlib`
 
 ---
 
 ## Installation
 
+Install the required Python packages:
+
 ```bash
-pip install llama-cpp-python datasets pyarrow
+pip install llama-cpp-python pandas pyarrow
 ```
+
+Depending on your hardware, `llama-cpp-python` can be installed/configured with CPU or GPU support.
+
+For GPU inference, make sure `llama-cpp-python` is installed with the appropriate backend for your hardware.
 
 ---
 
-## Configuration
+# Project Structure
 
-The generator is configured through `SyntheticDatasetConfig`.
+A typical project structure can look like:
 
-Example:
+```text
+project/
+│
+├── main.py
+├── config.py
+├── generator.py
+├── logger.py
+├── helpers/
+│   └── ...
+│
+├── models/
+│   └── model.gguf
+│
+├── dataset/
+│   └── ...
+│
+└── alllogs/
+    └── logs.txt
+```
+
+The exact structure depends on how `SyntheticDatasetConfig`, `MyLogger`, and `TimeFormatHelper` are organized in your project.
+
+---
+
+# Configuration
+
+The generator receives its configuration through `SyntheticDatasetConfig`.
+
+The following configuration values are used directly by `PersianConversationGenerator`:
 
 ```python
 class SyntheticDatasetConfig:
 
     model_path = r"C:\models\Qwen3-8B-Q6_K.gguf"
 
-    output_path = "./dataset/synthetic.parquet"
+    output_file = "synthetic.parquet"
 
-    total_samples = 10000
+    output_temp_file = None
 
-    language = "fa"
+    topics = [
+        "سلامت و پزشکی",
+        "هوش مصنوعی",
+        "برنامه نویسی",
+        "فناوری",
+        "آموزش",
+    ]
+
+    num_conversations = 10000
 
     n_ctx = 4096
     n_threads = 8
     n_batch = 512
     n_gpu_layers = 0
 
-    seed = 42
+    verbose = False
 
     max_tokens = 1536
-
-    shard_size = 5000
-    checkpoint_interval = 1000
-
-    max_attempts_multiplier = 15
-
-    min_user_words = 5
-    max_user_words = 180
-
-    min_assistant_words = 20
-    max_assistant_words = 900
-
-    min_quality_score = 72
-
-    temperature = 0.75
-    top_p = 0.9
-    min_p = 0.05
-    repeat_penalty = 1.08
-
-    retry_count = 4
-
-    enable_quality_judge = False
-    judge_model_path = None
-
-    export_final = True
-    cleanup_shards = False
-
-    multi_turn = True
-    min_turns = 2
     max_turns = 5
+    temperature = 0.75
+
+    Show_Generated_Output = False
+
+    system_prompt = """
+    ...
+    """
+
+    conversation_prompt = """
+    ...
+    """
+```
+
+> The exact values are examples. Your actual configuration class can define any topics, prompts, model path, and generation parameters required by your project.
+
+---
+
+# Configuration Options
+
+| Option                  | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `model_path`            | Path to the GGUF language model                          |
+| `output_file`           | Name/path of the final Parquet dataset                   |
+| `output_temp_file`      | Temporary file used while saving the dataset             |
+| `topics`                | List of topics used for conversation generation          |
+| `num_conversations`     | Total number of conversations to generate                |
+| `n_ctx`                 | Context window size used by the model                    |
+| `n_threads`             | Number of CPU threads used by `llama.cpp`                |
+| `n_batch`               | Batch size used during inference                         |
+| `n_gpu_layers`          | Number of model layers offloaded to GPU                  |
+| `verbose`               | Enables/disables verbose `llama.cpp` output              |
+| `max_tokens`            | Maximum number of tokens generated for each conversation |
+| `max_turns`             | Maximum number of conversation turns requested           |
+| `temperature`           | Controls randomness of generation                        |
+| `Show_Generated_Output` | Logs the generated conversation                          |
+| `system_prompt`         | System instruction provided to the model                 |
+| `conversation_prompt`   | Prompt template used to generate conversations           |
+
+---
+
+# Topics
+
+Topics are provided through the configuration:
+
+```python
+topics = [
+    "هوش مصنوعی",
+    "پزشکی",
+    "برنامه نویسی پایتون",
+    "امنیت سایبری",
+    "آموزش",
+    "فناوری",
+]
+```
+
+The generator uses `get_next_topic()` to select topics sequentially.
+
+For example:
+
+```text
+Conversation 1 → هوش مصنوعی
+Conversation 2 → پزشکی
+Conversation 3 → برنامه نویسی پایتون
+Conversation 4 → امنیت سایبری
+Conversation 5 → آموزش
+Conversation 6 → فناوری
+Conversation 7 → هوش مصنوعی
+...
+```
+
+When the end of the topic list is reached, the generator starts again from the first topic.
+
+---
+
+# Prompt Configuration
+
+Two prompts are used during generation.
+
+## System Prompt
+
+The system prompt is passed as a `system` message:
+
+```python
+{
+    "role": "system",
+    "content": self.config.system_prompt
+}
+```
+
+This prompt should define the model's overall behavior and the required output format.
+
+For example:
+
+```python
+system_prompt = """
+You are a Persian synthetic dataset generator.
+
+Generate natural and useful Persian user-assistant conversations.
+
+Return ONLY valid JSON.
+Do not use Markdown.
+Do not add explanations outside the JSON.
+"""
 ```
 
 ---
 
-## Configuration Options
+## Conversation Prompt
 
-| Option | Description |
-|---|---|
-| `model_path` | Path to GGUF generation model |
-| `output_path` | Final Parquet output path |
-| `total_samples` | Number of accepted samples |
-| `language` | Dataset language (`fa` or `en`) |
-| `n_ctx` | Model context size |
-| `n_threads` | CPU thread count |
-| `n_batch` | Inference batch size |
-| `n_gpu_layers` | GPU offloaded layers |
-| `max_tokens` | Maximum generated tokens |
-| `shard_size` | Samples per Parquet shard |
-| `checkpoint_interval` | Checkpoint frequency |
-| `temperature` | Sampling temperature |
-| `top_p` | Nucleus sampling parameter |
-| `min_p` | Minimum probability filtering |
-| `repeat_penalty` | Repetition control |
-| `retry_count` | Retry count per sample |
-| `min_quality_score` | Minimum accepted quality score |
-| `enable_quality_judge` | Enable secondary LLM evaluation |
-| `multi_turn` | Enable multi-turn conversations |
-| `min_turns` | Minimum conversation turns |
-| `max_turns` | Maximum conversation turns |
+The conversation prompt is formatted dynamically with:
+
+* `topic`
+* `max_turns`
+* `max_messages`
+
+Example:
+
+```python
+conversation_prompt = """
+Generate a Persian conversation about the following topic:
+
+Topic: {topic}
+
+Generate up to {max_turns} conversation turns.
+The maximum number of messages is {max_messages}.
+
+Return the result using this JSON structure:
+
+{
+    "messages": [
+        {
+            "role": "user",
+            "content": "..."
+        },
+        {
+            "role": "assistant",
+            "content": "..."
+        }
+    ]
+}
+"""
+```
+
+The generator automatically replaces:
+
+```text
+{topic}
+{max_turns}
+{max_messages}
+```
+
+with the current values.
 
 ---
 
-## Usage
+# Conversation Generation
+
+The main generation method is:
 
 ```python
-generator = SyntheticDatasetGenerator(
-    model_path=SyntheticDatasetConfig.model_path,
-    output_path=SyntheticDatasetConfig.output_path,
-    total_samples=SyntheticDatasetConfig.total_samples,
-    language=SyntheticDatasetConfig.language,
-    n_ctx=SyntheticDatasetConfig.n_ctx,
-    n_threads=SyntheticDatasetConfig.n_threads,
-    n_batch=SyntheticDatasetConfig.n_batch,
-    n_gpu_layers=SyntheticDatasetConfig.n_gpu_layers,
-    seed=SyntheticDatasetConfig.seed,
-    max_tokens=SyntheticDatasetConfig.max_tokens,
-    topics=SyntheticDatasetConfig.topics
+generate_conversation()
+```
+
+Example:
+
+```python
+topic, response = generator.generate_conversation(
+    conversation_index=1,
+    total_conversations=10000,
+    max_turns=5,
+    max_tokens=1536,
+    temperature=0.75
+)
+```
+
+The model generates its response using:
+
+```python
+self.llm.create_chat_completion(
+    messages=messages,
+    max_tokens=max_tokens,
+    temperature=temperature,
+    stream=True
+)
+```
+
+Generation is performed in streaming mode.
+
+The generated chunks are combined into a single response before JSON parsing.
+
+---
+
+# JSON Output
+
+The model is expected to return JSON in the following format:
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "هوش مصنوعی چیست؟"
+    },
+    {
+      "role": "assistant",
+      "content": "هوش مصنوعی به مجموعه‌ای از روش‌ها و فناوری‌ها گفته می‌شود که..."
+    }
+  ]
+}
+```
+
+For multi-turn conversations:
+
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "هوش مصنوعی چیست؟"
+    },
+    {
+      "role": "assistant",
+      "content": "هوش مصنوعی..."
+    },
+    {
+      "role": "user",
+      "content": "چه کاربردهایی دارد؟"
+    },
+    {
+      "role": "assistant",
+      "content": "هوش مصنوعی در حوزه‌های مختلفی مانند..."
+    }
+  ]
+}
+```
+
+---
+
+# Output Validation
+
+After generation, the response is cleaned before parsing.
+
+If the model returns Markdown code fences such as:
+
+````text
+```json
+{
+    "messages": [...]
+}
+````
+
+````
+
+the generator removes the code fences before calling:
+
+```python
+json.loads(clean_response)
+````
+
+The generator then checks that:
+
+1. The response is valid JSON.
+2. The `messages` field exists.
+3. `messages` is a list.
+
+Invalid generations are skipped.
+
+---
+
+# Message Limit
+
+The generator currently limits every conversation to a maximum of **32 messages**:
+
+```python
+conversation["messages"] = conversation["messages"][:32]
+```
+
+Therefore, even if the model generates more messages, only the first 32 messages are stored.
+
+---
+
+# Dataset Format
+
+The resulting Parquet dataset contains records similar to:
+
+```text
+id
+topic
+messages
+```
+
+Example:
+
+```text
+id: 1
+
+topic:
+هوش مصنوعی
+
+messages:
+[
+    {
+        "role": "user",
+        "content": "هوش مصنوعی چیست؟"
+    },
+    {
+        "role": "assistant",
+        "content": "هوش مصنوعی..."
+    }
+]
+```
+
+The `messages` field is stored as a JSON string inside the Parquet file.
+
+---
+
+# Generating a Dataset
+
+The recommended entry point is the `main()` function.
+
+The basic workflow is:
+
+```python
+def main():
+    try:
+        start_time = time.time()
+        start_datetime = datetime.now()
+
+        logger_obj = MyLogger(
+            log_dir="alllogs",
+            log_file_name="logs.txt"
+        )
+
+        logger, path = logger_obj.setup()
+
+        configs = SyntheticDatasetConfig(logger)
+        configs.log()
+
+        path = Path(path)
+
+        configs.output_temp_file = path
+        configs.output_file = path / configs.output_file
+
+        generator = PersianConversationGenerator(
+            logger,
+            configs
+        )
+
+        generator.generate_dataset()
+
+    except ValueError as error:
+        print(f"ERROR: {error}")
+```
+
+Then:
+
+```python
+if __name__ == "__main__":
+    main()
+```
+
+Run the project with:
+
+```bash
+python main.py
+```
+
+---
+
+# Example: Generate 10,000 Conversations
+
+Configure:
+
+```python
+num_conversations = 10000
+```
+
+For example:
+
+```python
+max_turns = 5
+max_tokens = 1536
+temperature = 0.75
+```
+
+Then run:
+
+```bash
+python main.py
+```
+
+The generator will continue until the configured number of conversations has been generated or the process is stopped.
+
+---
+
+# Checkpoint and Resume
+
+The generator automatically checks whether the output Parquet file already exists:
+
+```python
+if os.path.exists(self.output_file):
+```
+
+If the file exists, it loads the previously generated records:
+
+```python
+existing_df = pd.read_parquet(self.output_file)
+
+dataset = existing_df.to_dict("records")
+```
+
+The generator then resumes from:
+
+```python
+len(dataset)
+```
+
+instead of starting from zero.
+
+For example, if:
+
+```text
+num_conversations = 10000
+```
+
+and the existing dataset contains:
+
+```text
+3500 conversations
+```
+
+the generator continues from conversation:
+
+```text
+3501
+```
+
+until it reaches:
+
+```text
+10000
+```
+
+This makes the generator suitable for long-running dataset generation jobs.
+
+---
+
+# Saving Progress
+
+After every successfully generated conversation, the dataset is written to Parquet:
+
+```python
+df = pd.DataFrame(dataset)
+
+df.to_parquet(
+    self.config.output_temp_file,
+    index=False
 )
 
-generator.run()
+os.replace(
+    self.config.output_temp_file,
+    self.output_file
+)
+```
+
+This means progress is persisted continuously rather than only at the end of the entire generation process.
+
+If the process stops unexpectedly, previously saved conversations can be recovered from the output file.
+
+---
+
+# Error Handling
+
+The generator handles invalid JSON separately:
+
+```python
+except json.JSONDecodeError:
+    self.logger.info("Error: Model returned invalid JSON.")
+    self.logger.info("Conversation skipped.")
+```
+
+Other runtime errors are also caught:
+
+```python
+except Exception as e:
+    self.logger.info(f"Error: {e}")
+    self.logger.info("Conversation skipped.")
+```
+
+A failed conversation therefore does not necessarily terminate the entire dataset generation process.
+
+---
+
+# Logging
+
+Generation progress is logged using the project's `MyLogger`.
+
+Example logs:
+
+```text
+Loading model...
+Model loaded successfully!
+
+============================================================
+Generating 10000 conversations
+Output: dataset/synthetic.parquet
+============================================================
+
+Conversation [1/10000] | Topic: هوش مصنوعی
+
+Conversation saved successfully.
+
+Conversation [2/10000] | Topic: پزشکی
+
+Conversation saved successfully.
+```
+
+Generation time is also recorded:
+
+```text
+Generation time: 00:42
+```
+
+The project stores logs in:
+
+```text
+alllogs/logs.txt
 ```
 
 ---
 
-## Example
+# Model Configuration
 
-Generate 10,000 Persian multi-turn instruction samples:
+The generator uses `llama-cpp-python`:
 
 ```python
-total_samples = 10000
+self.llm = Llama(
+    model_path=self.config.model_path,
+    n_ctx=self.config.n_ctx,
+    n_threads=self.config.n_threads,
+    n_batch=self.config.n_batch,
+    n_gpu_layers=self.config.n_gpu_layers,
+    verbose=self.config.verbose
+)
+```
 
-language = "fa"
+This allows the user to control how the GGUF model is executed.
 
-multi_turn = True
+### CPU Example
 
-min_turns = 2
+```python
+n_threads = 8
+n_gpu_layers = 0
+```
+
+### GPU Example
+
+```python
+n_threads = 8
+n_gpu_layers = -1
+```
+
+The exact GPU configuration depends on the installed `llama-cpp-python` backend and available hardware.
+
+---
+
+# Generation Parameters
+
+## `max_tokens`
+
+Controls the maximum number of tokens generated by the model.
+
+```python
+max_tokens = 1536
+```
+
+Larger values allow longer conversations but can increase generation time and memory usage.
+
+---
+
+## `temperature`
+
+Controls generation randomness.
+
+```python
+temperature = 0.75
+```
+
+Typical values:
+
+```text
+0.2 → More deterministic
+0.5 → Conservative
+0.7 → Balanced
+0.9 → More diverse
+1.0+ → Highly diverse
+```
+
+For synthetic training data, moderate values are generally preferable because the generated conversations should remain coherent while still providing variation.
+
+---
+
+## `max_turns`
+
+Controls the requested number of conversation turns.
+
+```python
 max_turns = 5
 ```
 
-Output:
+The actual number of messages returned by the model depends on the prompt and model behavior.
+
+The generator additionally enforces the final 32-message storage limit.
+
+---
+
+# Persian Dataset Generation
+
+This project is primarily designed around Persian conversation generation.
+
+For Persian datasets, the quality of the generated data depends heavily on:
+
+* The selected GGUF model
+* System prompt
+* Conversation prompt
+* Topic list
+* Temperature
+* Maximum token count
+* Context size
+
+For best results, the prompts should explicitly instruct the model to produce natural Persian and valid JSON.
+
+---
+
+# Example Configuration
+
+A practical Persian configuration can look like:
+
+```python
+class SyntheticDatasetConfig:
+
+    model_path = r"C:\models\Qwen3-8B-Q6_K.gguf"
+
+    output_file = "persian_conversations.parquet"
+
+    topics = [
+        "هوش مصنوعی",
+        "یادگیری ماشین",
+        "برنامه نویسی پایتون",
+        "پزشکی",
+        "سلامت",
+        "فناوری",
+        "آموزش",
+        "امنیت اطلاعات",
+        "نرم افزار",
+        "علم و فناوری",
+    ]
+
+    num_conversations = 10000
+
+    n_ctx = 4096
+    n_threads = 8
+    n_batch = 512
+    n_gpu_layers = 0
+
+    verbose = False
+
+    max_turns = 5
+    max_tokens = 1536
+    temperature = 0.75
+
+    Show_Generated_Output = False
+
+    system_prompt = """
+    You are a Persian synthetic conversation dataset generator.
+
+    Generate natural, useful and coherent Persian conversations.
+
+    Return ONLY valid JSON.
+    Do not use Markdown code fences.
+    """
+
+    conversation_prompt = """
+    Generate a Persian conversation about:
+
+    {topic}
+
+    Generate up to {max_turns} turns.
+    Maximum messages: {max_messages}
+
+    Return ONLY JSON using this format:
+
+    {
+        "messages": [
+            {
+                "role": "user",
+                "content": "..."
+            },
+            {
+                "role": "assistant",
+                "content": "..."
+            }
+        ]
+    }
+    """
+```
+
+---
+
+# Output
+
+After generation, the dataset may look like:
 
 ```text
 dataset/
+└── persian_conversations.parquet
+```
 
-├── synthetic-000000.parquet
-├── synthetic-000001.parquet
-└── synthetic.parquet
+The Parquet file contains records such as:
+
+```text
++----+----------------+----------------------+
+| id | topic          | messages             |
++----+----------------+----------------------+
+| 1  | هوش مصنوعی     | JSON messages        |
+| 2  | پزشکی          | JSON messages        |
+| 3  | برنامه نویسی   | JSON messages        |
+| 4  | فناوری         | JSON messages        |
++----+----------------+----------------------+
 ```
 
 ---
 
-## Dataset Format
+# Loading the Dataset
 
-Each sample follows the standard chat dataset format:
+The generated dataset can be loaded using pandas:
 
-```json
+```python
+import pandas as pd
+
+df = pd.read_parquet(
+    "dataset/persian_conversations.parquet"
+)
+
+print(df.head())
+```
+
+The messages can then be decoded:
+
+```python
+import json
+
+messages = json.loads(
+    df.iloc[0]["messages"]
+)
+
+print(messages)
+```
+
+---
+
+# Example Dataset Record
+
+```python
 {
-  "messages": [
-    {
-      "role": "user",
-      "content": "..."
-    },
-    {
-      "role": "assistant",
-      "content": "..."
-    }
-  ]
+    "id": 1,
+    "topic": "هوش مصنوعی",
+    "messages": "[{\"role\": \"user\", \"content\": \"هوش مصنوعی چیست؟\"}, ...]"
 }
 ```
 
-Multi-turn samples:
+After decoding the `messages` field:
 
-```json
-{
-  "messages": [
+```python
+[
     {
-      "role": "user",
-      "content": "..."
+        "role": "user",
+        "content": "هوش مصنوعی چیست؟"
     },
     {
-      "role": "assistant",
-      "content": "..."
-    },
-    {
-      "role": "user",
-      "content": "..."
-    },
-    {
-      "role": "assistant",
-      "content": "..."
+        "role": "assistant",
+        "content": "هوش مصنوعی..."
     }
-  ]
-}
+]
 ```
 
----
-
-## Language Support
-
-### Persian (`fa`)
-
-Includes:
-
-- Persian character normalization
-- Arabic character detection
-- Half-space normalization
-- Persian punctuation normalization
-- Latin character ratio checking
-- Persian language consistency validation
-
-### English (`en`)
-
-Includes:
-
-- Natural English validation
-- Language consistency checks
-- Repetition detection
-- Response quality analysis
+This structure can subsequently be transformed into the format required by different SFT and instruction-tuning frameworks.
 
 ---
 
-## Quality Control
+# Large-Scale Generation
 
-Every generated sample passes multiple validation stages:
-
-- Valid JSON format
-- Correct message schema
-- Correct role ordering
-- Word length limits
-- Language validation
-- Repetition detection
-- Duplicate detection
-- Quality threshold checking
-
-Optional LLM-based evaluation:
+The generator can be configured for large datasets:
 
 ```python
-enable_quality_judge = True
-```
-
----
-
-## Checkpoint and Resume
-
-Long generation jobs automatically create checkpoints.
-
-If generation stops, the process can resume from the latest saved state.
-
-Stored checkpoint information:
-
-- Current progress
-- Accepted samples
-- Generation attempts
-- Duplicate signatures
-- Validation statistics
-
----
-
-## Large Scale Generation
-
-The pipeline supports large dataset generation:
-
-```python
-total_samples = 100000
+num_conversations = 100000
 ```
 
 or:
 
 ```python
-total_samples = 500000
+num_conversations = 500000
 ```
 
-Recommended:
+Because the dataset is saved after each successful conversation, long generation jobs can resume from the existing Parquet file.
+
+For large datasets, consider:
 
 ```python
-shard_size = 5000
-
-checkpoint_interval = 1000
-
-cleanup_shards = False
+n_ctx = 4096
+max_tokens = 1536
+max_turns = 5
 ```
+
+and adjust the inference parameters according to the available CPU, RAM, VRAM, and model size.
 
 ---
 
-## License
+# Important Notes
+
+### Model Output Must Be JSON
+
+The generator expects the model to return valid JSON.
+
+If the model frequently produces invalid JSON, improve the `system_prompt` and `conversation_prompt`.
+
+### Dataset Quality Depends on the Model
+
+This project validates the basic structure of the generated response, but it does not currently perform semantic quality scoring or automatic human-like evaluation.
+
+Generated conversations should therefore be sampled and manually inspected before using a large dataset for fine-tuning.
+
+### Generation Speed Depends on Hardware
+
+Generation speed is primarily affected by:
+
+* Model size
+* Quantization
+* CPU performance
+* GPU acceleration
+* Number of GPU layers
+* Context size
+* Number of generated tokens
+
+---
+
+# Current Validation
+
+The current implementation validates:
+
+* JSON syntax
+* Existence of `messages`
+* `messages` being a list
+* Maximum stored message count
+
+The current implementation does **not** automatically validate:
+
+* Persian language quality
+* Grammar
+* Semantic quality
+* Duplicate conversations
+* Duplicate questions
+* Toxicity
+* Hallucinations
+* Role ordering
+* Minimum/maximum word counts
+* Quality scores
+
+These checks can be added as future extensions.
+
+---
+
+# Future Improvements
+
+Possible future improvements include:
+
+* Automatic retry for invalid JSON
+* Message role validation
+* Persian language validation
+* Duplicate detection
+* Semantic quality scoring
+* LLM-based quality judging
+* Automatic filtering
+* Dataset sharding
+* Seed-based reproducibility
+* `top_p` and `min_p` sampling
+* `repeat_penalty`
+* Parallel generation
+* Multiple model support
+* Separate checkpoint metadata
+* Dataset statistics
+* Generation metrics
+* Automatic train/validation/test splitting
+
+---
+
+# License
 
 This project is licensed under the MIT License.
 

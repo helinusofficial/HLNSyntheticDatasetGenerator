@@ -109,13 +109,20 @@ class PersianConversationGenerator:
                 conversation["messages"] = conversation["messages"][:32]
 
                 dataset.append(
-                    {"id": i + 1, "topic": topic, "messages": json.dumps(conversation["messages"], ensure_ascii=False)})
+                    {
+                        "id": i + 1,
+                        "topic": topic,
+                        "messages": json.dumps(
+                            conversation["messages"],
+                            ensure_ascii=False
+                        )
+                    }
+                )
 
                 df = pd.DataFrame(dataset)
-                self.config.output_temp_file = str(self.config.output_temp_file) + ".tmp"
                 df.to_parquet(self.config.output_temp_file, index=False)
-                os.replace(self.config.output_temp_file, self.output_file)
 
+                os.replace(self.config.output_temp_file, self.output_file)
                 self.logger.info("Conversation saved successfully.")
 
             except json.JSONDecodeError:

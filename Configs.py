@@ -303,7 +303,7 @@ class SyntheticDatasetConfig:
     ]
 }}
 """
-
+        self.Show_Generated_Output=False
         self.config_text = self._build_config_text()
 
     def _build_config_text(self) -> str:
@@ -321,6 +321,7 @@ class SyntheticDatasetConfig:
         lines.append(f"N_Threads                 : {self.n_threads}")
         lines.append(f"N_Batch                   : {self.n_batch}")
         lines.append(f"N_GPU_Layers              : {self.n_gpu_layers}")
+        lines.append(f"Show_Generated_Output     : {self.Show_Generated_Output}")
 
         lines.append("")
         lines.append("[DATASET]")

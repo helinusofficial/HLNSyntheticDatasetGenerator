@@ -13,11 +13,8 @@ class PersianConversationGenerator:
         self.output_file = self.config.output_file
 
         self.topics = self.config.topics
-
         self.topic_index = 0
-
         self.logger.info("Loading model...")
-
         self.llm = Llama(
             model_path=self.config.model_path,
             n_ctx=self.config.n_ctx,
@@ -26,73 +23,45 @@ class PersianConversationGenerator:
             n_gpu_layers=self.config.n_gpu_layers,
             verbose=False
         )
-
         self.logger.info("Model loaded successfully!")
 
     def get_next_topic(self):
         topic = self.topics[self.topic_index]
-
         self.topic_index += 1
-
         if self.topic_index >= len(self.topics):
             self.topic_index = 0
 
         return topic
 
-    def generate_conversation(self, max_turns=None, max_tokens=None, temperature=None):
+    def generate_conversation(self, conversation_index, total_conversations, max_turns=None, max_tokens=None,
+                              temperature=None):
         if max_turns is None:
             max_turns = self.config.max_turns
-
         if max_tokens is None:
             max_tokens = self.config.max_tokens
-
         if temperature is None:
             temperature = self.config.temperature
-
         max_turns = min(max_turns, 16)
         max_messages = max_turns * 2
-
         topic = self.get_next_topic()
-
-        self.logger.info(f"\nTopic: {topic}")
-
+        self.logger.info(f"Conversation [{conversation_index}/{total_conversations}] | Topic: {topic}")
         messages = [
-            {
-                "role": "system",
-                "content": self.config.system_prompt
-            },
-            {
-                "role": "user",
-                "content": self.config.conversation_prompt.format(
-                    topic=topic,
-                    max_turns=max_turns,
-                    max_messages=max_messages
-                )
-            }
+            {"role": "system", "content": self.config.system_prompt},
+            {"role": "user", "content": self.config.conversation_prompt.format(topic=topic, max_turns=max_turns,
+                                                                               max_messages=max_messages)}
         ]
-
         start_time = datetime.now()
-
-        output = self.llm.create_chat_completion(
-            messages=messages,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            stream=True
-        )
-
+        output = self.llm.create_chat_completion(messages=messages, max_tokens=max_tokens, temperature=temperature,
+                                                 stream=True)
         response = ""
-
         for chunk in output:
             content = chunk["choices"][0]["delta"].get("content", "")
-
             if content:
                 response += content
-                self.logger.info(content, end="", flush=True)
-
+                if self.config.Show_Generated_Output:
+                    self.logger.info(content, end="", flush=True)
         elapsed = datetime.now() - start_time
-
         self.logger.info(f"\nGeneration time: {elapsed.seconds // 60:02d}:{elapsed.seconds % 60:02d}")
-
         return topic, response
 
     def generate_dataset(self, max_turns=None, max_tokens=None, temperature=None):
@@ -107,17 +76,19 @@ class PersianConversationGenerator:
 
         dataset = []
 
-        self.logger.info("\n" + "=" * 60)
+        self.logger.info("=" * 60)
         self.logger.info(f"Generating {self.num_conversations} conversations")
         self.logger.info(f"Output: {self.output_file}")
         self.logger.info("=" * 60)
 
         for i in range(self.num_conversations):
-            self.logger.info(f"\n\n[{i + 1}/{self.num_conversations}]")
+
 
             try:
-                topic, response = self.generate_conversation(max_turns=max_turns, max_tokens=max_tokens, temperature=temperature)
-
+                topic, response = self.generate_conversation(conversation_index=i + 1,
+                                                             total_conversations=self.num_conversations,
+                                                             max_turns=max_turns, max_tokens=max_tokens,
+                                                             temperature=temperature)
                 clean_response = response.strip()
 
                 if clean_response.startswith("```"):

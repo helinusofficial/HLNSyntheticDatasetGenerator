@@ -64,7 +64,16 @@ class PersianConversationGenerator:
             self.logger.info(response)
 
         elapsed = datetime.now() - start_time
-        self.logger.info(f"\nGeneration time: {elapsed.seconds // 60:02d}:{elapsed.seconds % 60:02d}")
+        total_seconds = int(elapsed.total_seconds())
+
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+
+        self.logger.info(
+            f"Conversation [{conversation_index}/{total_conversations}] | "
+            f"Generation time: {hours:02d}:{minutes:02d}:{seconds:02d}"
+        )
         return topic, response
 
     def generate_dataset(self):
@@ -118,12 +127,11 @@ class PersianConversationGenerator:
                         )
                     }
                 )
-
-                df = pd.DataFrame(dataset)
-                df.to_parquet(self.config.output_temp_file, index=False)
-
-                os.replace(self.config.output_temp_file, self.output_file)
-                self.logger.info("Conversation saved successfully.")
+                if (i + 1) % self.config.save_interval == 0 or (i + 1) == self.config.num_conversations:
+                    df = pd.DataFrame(dataset)
+                    df.to_parquet(self.config.output_temp_file, index=False)
+                    os.replace(self.config.output_temp_file, self.output_file)
+                    self.logger.info(f"Dataset saved: {len(dataset)} conversations")
 
             except json.JSONDecodeError:
                 self.logger.info("Error: Model returned invalid JSON.")

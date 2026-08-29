@@ -13,13 +13,15 @@ class SyntheticDatasetConfig:
         self.model_path = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
         self.output_file = "persian_conversations.parquet"
         self.output_temp_file="temp_persian_conversations"
-        self.num_conversations = 100
+
+        self.num_conversations = 20
+        self.save_interval = 1
         self.n_ctx = 8192
-        self.n_threads = 4
+        self.n_threads = 6
         self.n_batch = 1024
         self.n_gpu_layers = -1
 
-        self.max_turns = 24
+        self.max_turns = 2
         self.max_tokens = 6144
         self.temperature = 0.75
 
@@ -331,6 +333,7 @@ class SyntheticDatasetConfig:
         lines.append("[DATASET]")
         lines.append(f"Num_Conversations         : {self.num_conversations}")
         lines.append(f"Output_File               : {self.output_file}")
+        lines.append(f"save_interval             : {self.save_interval}")
 
         lines.append("")
         lines.append("[GENERATION]")

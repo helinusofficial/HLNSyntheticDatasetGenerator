@@ -17,10 +17,16 @@ class SyntheticDatasetGenerator:
     def __init__(self,logger, cfg):
         self.logger=logger
         self.configs=cfg
-        self.max_attempts = max(1, self.configs.total_samples * int(self.configs.max_attempts_multiplier))
+
+        self.max_attempts = max(
+            self.configs.total_samples,
+            int(
+                self.configs.total_samples *
+                self.configs.max_attempts_multiplier
+            )
+        )
         self.random = random.Random(self.configs.seed)
         self.llm = None
-        self.judge_llm = None
         self.start_time = None
         self.accepted = 0
         self.attempts = 0
@@ -53,6 +59,11 @@ class SyntheticDatasetGenerator:
             raise ValueError("n_ctx, n_threads and n_batch must be greater than zero")
         if self.configs.max_tokens <= 0:
             raise ValueError("max_tokens must be greater than zero")
+        if self.configs.max_attempts_multiplier < 1:
+            raise ValueError("max_attempts_multiplier must be at least 1")
+
+        if self.configs.retry_count <= 0:
+            raise ValueError("retry_count must be greater than zero")
         if self.configs.shard_size <= 0:
             raise ValueError("shard_size must be greater than zero")
         if self.configs.checkpoint_interval <= 0:
@@ -63,21 +74,8 @@ class SyntheticDatasetGenerator:
             raise ValueError("top_p must be between 0 and 1")
         if not 0.0 <= self.configs.min_p <= 1.0:
             raise ValueError("min_p must be between 0 and 1")
-        if self.configs.min_user_words <= 0 or self.configs.max_user_words < self.configs.min_user_words:
-            raise ValueError("Invalid user word limits")
-        if self.configs.min_assistant_words <= 0 or self.configs.max_assistant_words < self.configs.min_assistant_words:
-            raise ValueError("Invalid assistant word limits")
-        if self.configs.enable_quality_judge and not self.configs.judge_model_path:
-            raise ValueError("judge_model_path is required when enable_quality_judge=True")
-        if self.configs.multi_turn:
-            if self.configs.min_turns <= 1:
-                raise ValueError("multi_turn requires min_turns > 1")
-
-            if self.configs.max_turns < self.configs.min_turns:
-                raise ValueError("max_turns must be greater than or equal to min_turns")
-        else:
-            self.configs.min_turns = 1
-            self.configs.max_turns = 1
+        if self.configs.max_turns < 2:
+            raise ValueError("max_turns must be at least 2")
 
     def load_model(self) -> None:
         self.logger.info(f"Loading generation model: {self.configs.model_path}")
@@ -93,20 +91,6 @@ class SyntheticDatasetGenerator:
             seed=self.configs.seed
         )
         self.logger.info("Generation model loaded successfully")
-
-    def load_judge_model(self) -> None:
-        if not self.configs.enable_quality_judge:
-            return
-        if not os.path.isfile(self.configs.judge_model_path):
-            raise FileNotFoundError(f"Judge model not found: {self.configs.judge_model_path}")
-        self.logger.info(f"Loading judge model: {self.configs.judge_model_path}")
-        self.judge_llm = Llama(model_path=self.configs.judge_model_path,
-                               n_ctx=self.configs.n_ctx, n_threads=self.configs.n_threads,
-                               n_batch=self.configs.n_batch, n_gpu_layers=self.configs.n_gpu_layers,
-                               use_mmap=self.configs.judge_llm_use_mmap,
-                               use_mlock=self.configs.judge_llm_use_mlock, verbose=self.configs.judge_llm_verbose,
-                               seed=self.configs.seed + 1000000)
-        self.logger.info("Judge model loaded successfully")
 
     def _normalize_text(self, text: str) -> str:
         text = unicodedata.normalize("NFKC", text)
@@ -249,19 +233,17 @@ class SyntheticDatasetGenerator:
     def _build_prompt(self, topic: str, task: str, style: str, difficulty: str,
                       audience: str, question_style: str, index: int) -> str:
 
-        mode = "multi" if self.configs.multi_turn else "single"
         prompt_config = self.configs.prompt_config[self.configs.language]
 
-        intro = prompt_config["intro"][mode]
+        intro = prompt_config["intro"]
 
-        turn_instruction = prompt_config["turn_instruction"][mode].format(
-            min_turns=self.configs.min_turns,
+        turn_instruction = prompt_config["turn_instruction"].format(
             max_turns=self.configs.max_turns
         )
 
         instructions = prompt_config["instructions"]
         output = prompt_config["output"]
-        continuation = prompt_config["continuation"][mode]
+        continuation = prompt_config["continuation"]
 
         if self.configs.language == "fa":
             return f"""/no_think
@@ -315,14 +297,13 @@ class SyntheticDatasetGenerator:
         if not isinstance(messages, list):
             return False, "invalid_messages"
 
-        if self.configs.multi_turn:
-            turns = len(messages) // 2
+        turns = len(messages) // 2
 
-            if turns < self.configs.min_turns or turns > self.configs.max_turns:
-                return False, "invalid_multi_turn_turn_count"
-        else:
-            if len(messages) != 2:
-                return False, "invalid_message_count"
+        if turns < 2 or turns > self.configs.max_turns:
+            return False, "invalid_multi_turn_turn_count"
+
+        if len(messages) % 2 != 0:
+            return False, "invalid_message_count"
 
         for i, message in enumerate(messages):
             if not isinstance(message, dict):
@@ -341,31 +322,6 @@ class SyntheticDatasetGenerator:
 
             if message.get("role") != expected_role:
                 return False, "invalid_roles"
-
-        user_messages = messages[0::2]
-        assistant_messages = messages[1::2]
-
-        total_user_words = sum(
-            self._word_count(message["content"])
-            for message in user_messages
-        )
-
-        total_assistant_words = sum(
-            self._word_count(message["content"])
-            for message in assistant_messages
-        )
-
-        if total_user_words < self.configs.min_user_words:
-            return False, "user_too_short"
-
-        if total_user_words > self.configs.max_user_words:
-            return False, "user_too_long"
-
-        if total_assistant_words < self.configs.min_assistant_words:
-            return False, "assistant_too_short"
-
-        if total_assistant_words > self.configs.max_assistant_words:
-            return False, "assistant_too_long"
 
         return True, "ok"
 
@@ -481,36 +437,6 @@ class SyntheticDatasetGenerator:
             if message["role"] == "user"
         ]
         return hashlib.sha256("\n".join(user_messages).encode("utf-8")).hexdigest()
-
-    def _judge(self, sample: Dict[str, Any]) -> bool:
-        if not self.configs.enable_quality_judge:
-            return True
-        prompt = self.configs.judge_config["user_prompt"].format(sample=json.dumps(sample, ensure_ascii=False))
-        try:
-            result = self.judge_llm.create_chat_completion(
-                messages=[
-                    {
-                        "role": "system",
-                        "content": self.configs.judge_config["system_prompt"]
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                temperature=self.configs.judge_config["temperature"],
-                top_p=self.configs.judge_config["top_p"],
-                max_tokens=self.configs.judge_config["max_tokens"],
-                response_format=self.configs.judge_config["response_format"],
-                seed=self.configs.seed + self.accepted
-            )
-
-            judgment = json.loads(result["choices"][0]["message"]["content"].strip())
-            return (bool(judgment.get("acceptable", False)) and int(judgment.get("score", 0)) >= self.configs.min_quality_score)
-
-        except Exception as exc:
-            self.logger.warning("Judge failure: %s", exc)
-            return False
 
     def _generate_sample(self, index: int) -> Dict[str, Any]:
         perf_start = time.perf_counter()
@@ -659,7 +585,7 @@ class SyntheticDatasetGenerator:
 
                 try:
                     sample = json.loads(raw)
-                except json.JSONDecodeError:
+                except json.JSONDecodeError as exc:
                     json_time = time.perf_counter() - t
 
                     self.logger.error(
@@ -740,22 +666,7 @@ class SyntheticDatasetGenerator:
                     self.configs.stats["quality_failed"] += 1
                     continue
 
-                if self.configs.enable_quality_judge:
-                    t = time.perf_counter()
 
-                    judge_result = self._judge(sample)
-
-                    judge_time = time.perf_counter() - t
-
-                    self.logger.info(f"Judge: {time.strftime('%H:%M:%S', time.gmtime(judge_time))} | result={judge_result}")
-
-                    if not judge_result:
-                        self.configs.stats["quality_failed"] += 1
-                        self.logger.info(
-                            f"Quality judge rejected sample: "
-                            f"index={index}, retry={retry + 1}"
-                        )
-                        continue
 
                 total_sample_time = time.perf_counter() - perf_start
 
@@ -834,13 +745,79 @@ class SyntheticDatasetGenerator:
         os.replace(temporary, path)
         self.logger.info(f"Shard {index} saved successfully: {len(samples)} samples")
 
-    def _save_checkpoint(self, next_index: int) -> None:
-        state = {"next_index": next_index, "accepted": self.accepted, "attempts": self.attempts, "stats": self.configs.stats, "signatures": list(self.signatures), "user_signatures": list(self.user_signatures)}
+    def _load_checkpoint(self) -> None:
+        if not self.configs.resume:
+            self.logger.info("Resume disabled. Starting from scratch.")
+            return
+
+        path = self._checkpoint_path()
+
+        if not os.path.isfile(path):
+            self.logger.info("No checkpoint found. Starting from scratch.")
+            return
+
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                state = json.load(f)
+
+            self.accepted = int(state.get("accepted", 0))
+            self.attempts = int(state.get("attempts", 0))
+
+            self.signatures = set(
+                state.get("signatures", [])
+            )
+
+            self.user_signatures = set(
+                state.get("user_signatures", [])
+            )
+
+            saved_stats = state.get("stats", {})
+
+            if isinstance(saved_stats, dict):
+                self.configs.stats.update(saved_stats)
+
+            self.logger.info(
+                f"Checkpoint loaded successfully: "
+                f"accepted={self.accepted}, "
+                f"attempts={self.attempts}, "
+                f"signatures={len(self.signatures)}, "
+                f"user_signatures={len(self.user_signatures)}"
+            )
+
+        except Exception as exc:
+            self.logger.exception(
+                f"Failed to load checkpoint: {path} | error={exc}"
+            )
+            raise
+    def _save_checkpoint(self) -> None:
+        state = {
+            "accepted": self.accepted,
+            "attempts": self.attempts,
+            "stats": self.configs.stats,
+            "signatures": list(self.signatures),
+            "user_signatures": list(self.user_signatures)
+        }
+
         temporary = f"{self._checkpoint_path()}.tmp"
-        self.logger.info(f"Saving checkpoint: accepted={self.accepted}, attempts={self.attempts}, next_index={next_index}")
+
+        self.logger.info(
+            f"Saving checkpoint: "
+            f"accepted={self.accepted}, "
+            f"attempts={self.attempts}"
+        )
+
         with open(temporary, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
-        os.replace(temporary, self._checkpoint_path())
+            json.dump(
+                state,
+                f,
+                ensure_ascii=False,
+                indent=2
+            )
+
+        os.replace(
+            temporary,
+            self._checkpoint_path()
+        )
 
     def run(self) -> None:
         self._validate_config()
@@ -853,16 +830,18 @@ class SyntheticDatasetGenerator:
         self.logger.info("=" * 80)
 
         self.load_model()
-        self.load_judge_model()
 
         existing_shards = self._existing_shards()
 
         if existing_shards:
-            self.logger.info(f"Found {len(existing_shards)} existing shard(s)")
+            self.logger.info(
+                f"Found {len(existing_shards)} existing shard(s)"
+            )
+
+        self._load_checkpoint()
 
         current_shard: List[Dict[str, Any]] = []
         shard_index = len(existing_shards)
-        next_index = self.accepted
 
         while self.accepted < self.configs.total_samples and self.attempts < self.max_attempts:
             self.attempts += 1
@@ -906,7 +885,7 @@ class SyntheticDatasetGenerator:
         if current_shard:
             self._save_shard(current_shard, shard_index)
 
-        self._save_checkpoint(self.accepted)
+        self._save_checkpoint()
 
         elapsed = time.time() - self.start_time
 

@@ -4,9 +4,9 @@ class SyntheticDatasetConfig:
     def __init__(self, logger):
         self.logger = logger
 
-        self.model_path = r"D:\Downloads\qwen2.5-3b-instruct-q4_k_m.gguf"
+        self.model_path = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
         self.output_path = r"./dataset/synthetic.parquet"
-        self.total_samples = 10
+        self.total_samples = 1
         self.n_ctx = 2048
         self.n_threads = 4
         self.n_batch = 1024
@@ -19,28 +19,20 @@ class SyntheticDatasetConfig:
         self.shard_size = 100
         self.checkpoint_interval = 50
         self.max_attempts_multiplier = 3
-        self.min_user_words = 3
-        self.max_user_words = 100
-        self.min_assistant_words = 10
-        self.max_assistant_words = 300
+
         self.min_quality_score = 65
         self.temperature = 0.75
         self.top_p = 0.9
         self.min_p = 0.05
         self.repeat_penalty = 1.08
         self.retry_count = 3
-        self.enable_quality_judge = False
-        self.judge_model_path = None
         self.export_final = True
-        self.cleanup_shards = False
+        self.cleanup_shards = True
 
-        self.min_turns = 2
-        self.max_turns = 3
-        self.multi_turn = True
+        self.max_turns = 32
 
         self.topics = {
             "fa": [
-                # مکالمات روزمره
                 "احوالپرسی",
                 "معرفی خود",
                 "معرفی دیگران",
@@ -61,8 +53,6 @@ class SyntheticDatasetConfig:
                 "صحبت درباره تصمیم‌های شخصی",
                 "صحبت درباره ترجیحات",
                 "صحبت درباره عادت‌ها",
-
-                # تعامل اجتماعی
                 "شروع یک گفت‌وگوی جدید",
                 "ادامه دادن یک گفت‌وگو",
                 "پایان دادن مؤدبانه به مکالمه",
@@ -91,8 +81,6 @@ class SyntheticDatasetConfig:
                 "پیشنهاد دادن",
                 "پذیرش پیشنهاد",
                 "رد کردن پیشنهاد",
-
-                # درخواست و کمک
                 "درخواست کمک",
                 "درخواست اطلاعات",
                 "درخواست توضیح",
@@ -111,8 +99,6 @@ class SyntheticDatasetConfig:
                 "درخواست ساده‌تر توضیح دادن",
                 "درخواست جزئیات بیشتر",
                 "درخواست خلاصه کردن",
-
-                # پرسش و پاسخ مکالمه‌ای
                 "پرسش مستقیم",
                 "پرسش تکمیلی",
                 "پرسش پیگیری",
@@ -126,8 +112,6 @@ class SyntheticDatasetConfig:
                 "تغییر سؤال",
                 "بازگشت به موضوع قبلی",
                 "ادامه دادن بر اساس پاسخ قبلی",
-
-                # حل مسئله
                 "بیان یک مشکل",
                 "شرح یک مشکل",
                 "درخواست راه‌حل",
@@ -144,8 +128,6 @@ class SyntheticDatasetConfig:
                 "رسیدن به توافق",
                 "مذاکره",
                 "چانه‌زنی",
-
-                # مکالمات کاری
                 "گفت‌وگوی کاری",
                 "گفت‌وگو با همکار",
                 "گفت‌وگو با مدیر",
@@ -170,8 +152,6 @@ class SyntheticDatasetConfig:
                 "گفت‌وگوی استخدامی",
                 "مصاحبه شغلی",
                 "مکالمه با مشتری ناراضی",
-
-                # خرید و خدمات
                 "خرید محصول",
                 "پرس‌وجو درباره محصول",
                 "پرس‌وجو درباره قیمت",
@@ -192,8 +172,6 @@ class SyntheticDatasetConfig:
                 "رزرو خدمات",
                 "لغو رزرو",
                 "تغییر رزرو",
-
-                # موقعیت‌های واقعی
                 "مکالمه در فروشگاه",
                 "مکالمه در رستوران",
                 "مکالمه در کافه",
@@ -212,8 +190,6 @@ class SyntheticDatasetConfig:
                 "مکالمه برای رزرو",
                 "مکالمه برای دریافت اطلاعات",
                 "مکالمه هنگام سفر",
-
-                # سفر
                 "برنامه‌ریزی سفر",
                 "انتخاب مقصد",
                 "رزرو هتل",
@@ -227,8 +203,6 @@ class SyntheticDatasetConfig:
                 "مکالمه با کارکنان هتل",
                 "مکالمه در فرودگاه",
                 "مکالمه هنگام ورود به هتل",
-
-                # آموزش
                 "پرسیدن سؤال آموزشی",
                 "درخواست آموزش",
                 "درخواست آموزش ساده",
@@ -241,8 +215,6 @@ class SyntheticDatasetConfig:
                 "تمرین مکالمه",
                 "درخواست مثال آموزشی",
                 "توضیح یک موضوع برای مبتدی",
-
-                # فناوری و کار با ابزار
                 "کمک برای استفاده از نرم‌افزار",
                 "عیب‌یابی نرم‌افزار",
                 "مشکل در کامپیوتر",
@@ -253,8 +225,6 @@ class SyntheticDatasetConfig:
                 "کمک برای پیدا کردن خطا",
                 "درخواست راهنمایی فنی",
                 "گفت‌وگوی کاربر و پشتیبان فنی",
-
-                # مکالمات مبتنی بر context
                 "ارجاع به صحبت قبلی",
                 "ارجاع به پاسخ قبلی",
                 "ادامه یک درخواست قبلی",
@@ -270,8 +240,6 @@ class SyntheticDatasetConfig:
                 "جمع‌بندی مکالمه",
                 "رسیدن به نتیجه",
                 "ادامه مکالمه پس از وقفه",
-
-                # موقعیت‌های احساسی و انسانی
                 "صحبت با فرد ناراحت",
                 "صحبت با فرد نگران",
                 "دلجویی",
@@ -284,8 +252,6 @@ class SyntheticDatasetConfig:
                 "پاسخ به انتقاد",
                 "پاسخ به ناراحتی",
                 "مدیریت یک گفت‌وگوی حساس",
-
-                # زبان و نوشتار
                 "اصلاح جمله",
                 "اصلاح متن",
                 "بازنویسی جمله",
@@ -301,8 +267,6 @@ class SyntheticDatasetConfig:
                 "پاسخ مناسب به یک پیام",
                 "نوشتن پاسخ کوتاه",
                 "نوشتن پاسخ مؤدبانه",
-
-                # گفت‌وگوهای باز و آزاد
                 "گفت‌وگوی آزاد",
                 "گفت‌وگوی غیررسمی",
                 "گفت‌وگوی رسمی",
@@ -313,278 +277,8 @@ class SyntheticDatasetConfig:
                 "گفت‌وگوی تجربه محور",
                 "گفت‌وگوی سناریو محور",
                 "گفت‌وگوی مسئله محور"
-            ],
-
-            "en": [
-                "Greetings",
-                "Introducing yourself",
-                "Introducing someone else",
-                "Meeting someone new",
-                "Casual conversation",
-                "Family conversation",
-                "Talking about daily life",
-                "Talking about routines",
-                "Talking about interests",
-                "Talking about hobbies",
-                "Talking about free time",
-                "Talking about work",
-                "Talking about education",
-                "Talking about personal life",
-                "Talking about future plans",
-                "Talking about memories",
-                "Talking about past experiences",
-                "Talking about personal decisions",
-                "Talking about preferences",
-                "Talking about habits",
-
-                "Starting a conversation",
-                "Continuing a conversation",
-                "Ending a conversation politely",
-                "Asking someone a question",
-                "Answering a personal question",
-                "Expressing an opinion",
-                "Agreeing with someone",
-                "Disagreeing politely",
-                "Expressing surprise",
-                "Expressing happiness",
-                "Expressing sadness",
-                "Expressing concern",
-                "Expressing interest",
-                "Expressing disinterest",
-                "Thanking",
-                "Apologizing",
-                "Accepting an apology",
-                "Congratulating",
-                "Showing sympathy",
-                "Encouraging someone",
-                "Complimenting someone",
-                "Responding to a compliment",
-                "Inviting someone",
-                "Accepting an invitation",
-                "Declining an invitation",
-                "Making a suggestion",
-                "Accepting a suggestion",
-                "Rejecting a suggestion",
-
-                "Asking for help",
-                "Asking for information",
-                "Asking for an explanation",
-                "Asking for more explanation",
-                "Asking for an example",
-                "Asking for guidance",
-                "Asking for a recommendation",
-                "Making a request",
-                "Requesting a change",
-                "Requesting a correction",
-                "Asking for confirmation",
-                "Asking for an opinion",
-                "Asking for feedback",
-                "Asking for clarification",
-                "Asking someone to repeat",
-                "Asking for a simpler explanation",
-                "Requesting more details",
-                "Asking for a summary",
-
-                "Direct question",
-                "Follow-up question",
-                "Related question",
-                "Question based on a previous answer",
-                "Question about a previous topic",
-                "Multi-part question",
-                "Indirect question",
-                "Ambiguous question",
-                "Clarification",
-                "Resolving a misunderstanding",
-                "Changing a question",
-                "Returning to a previous topic",
-                "Continuing from a previous answer",
-
-                "Describing a problem",
-                "Explaining a problem",
-                "Asking for a solution",
-                "Finding the cause of a problem",
-                "Troubleshooting",
-                "Evaluating multiple solutions",
-                "Choosing between options",
-                "Decision making",
-                "Asking for advice",
-                "Comparing advantages and disadvantages",
-                "Evaluating consequences",
-                "Resolving a disagreement",
-                "Resolving a misunderstanding",
-                "Reaching an agreement",
-                "Negotiation",
-                "Bargaining",
-
-                "Work conversation",
-                "Coworker conversation",
-                "Manager and employee conversation",
-                "Employee and manager conversation",
-                "Customer conversation",
-                "Employer conversation",
-                "Making a request at work",
-                "Following up on work",
-                "Reporting progress",
-                "Work coordination",
-                "Scheduling a meeting",
-                "Rescheduling a meeting",
-                "Canceling a meeting",
-                "Requesting time off",
-                "Delegating tasks",
-                "Handing over work",
-                "Receiving work feedback",
-                "Responding to criticism",
-                "Making a work proposal",
-                "Business negotiation",
-                "Resolving workplace conflict",
-                "Job interview",
-                "Customer complaint conversation",
-
-                "Buying a product",
-                "Product inquiry",
-                "Price inquiry",
-                "Asking about features",
-                "Comparing products",
-                "Choosing a product",
-                "Asking for a discount",
-                "Placing an order",
-                "Following up on an order",
-                "Order problem",
-                "Payment problem",
-                "Returning a product",
-                "Exchanging a product",
-                "Complaining about a service",
-                "Responding to a complaint",
-                "Requesting customer support",
-                "Customer support conversation",
-                "Booking a service",
-                "Canceling a booking",
-                "Changing a booking",
-
-                "Store conversation",
-                "Restaurant conversation",
-                "Cafe conversation",
-                "Hotel conversation",
-                "Airport conversation",
-                "Station conversation",
-                "Taxi conversation",
-                "Bank conversation",
-                "Office conversation",
-                "University conversation",
-                "School conversation",
-                "Workplace conversation",
-                "Phone conversation",
-                "Online conversation",
-                "Technical support conversation",
-                "Booking conversation",
-                "Information desk conversation",
-                "Travel conversation",
-
-                "Planning a trip",
-                "Choosing a destination",
-                "Booking a hotel",
-                "Booking a ticket",
-                "Asking for directions",
-                "Asking for an address",
-                "Getting lost",
-                "Travel problem",
-                "Changing travel plans",
-                "Canceling a trip",
-                "Talking with hotel staff",
-                "Airport conversation",
-                "Hotel check-in conversation",
-
-                "Asking an educational question",
-                "Requesting instruction",
-                "Asking for a simple explanation",
-                "Requesting step-by-step instruction",
-                "Asking a follow-up after learning",
-                "Resolving a learning misunderstanding",
-                "Correcting an answer",
-                "Checking an answer",
-                "Practicing a skill",
-                "Conversation practice",
-                "Asking for an educational example",
-                "Explaining something to a beginner",
-
-                "Getting help with software",
-                "Software troubleshooting",
-                "Computer problem",
-                "Phone problem",
-                "Internet problem",
-                "Getting help with settings",
-                "Installing an application",
-                "Finding an error",
-                "Technical guidance",
-                "User and technical support conversation",
-
-                "Referring to previous conversation",
-                "Referring to a previous answer",
-                "Continuing a previous request",
-                "Correcting a previous request",
-                "Adding new information",
-                "Removing part of a request",
-                "Changing part of a request",
-                "Changing the goal during a conversation",
-                "Asking about a previous answer",
-                "Requesting details about a previous topic",
-                "Comparing with a previous option",
-                "Returning to an earlier topic",
-                "Summarizing a conversation",
-                "Reaching a conclusion",
-                "Continuing after an interruption",
-
-                "Talking with someone who is upset",
-                "Talking with someone who is worried",
-                "Comforting someone",
-                "Showing empathy",
-                "Calming someone down",
-                "Encouraging someone",
-                "Supporting someone in a difficult situation",
-                "Responding to good news",
-                "Responding to bad news",
-                "Responding to criticism",
-                "Responding to frustration",
-                "Handling a sensitive conversation",
-
-                "Sentence correction",
-                "Text correction",
-                "Sentence rewriting",
-                "Text rewriting",
-                "Changing tone",
-                "Simplifying text",
-                "Making text more formal",
-                "Making text more casual",
-                "Suggesting a suitable phrase",
-                "Finding the right word",
-                "Explaining an expression",
-                "Conversational translation",
-                "Writing a suitable reply",
-                "Writing a short reply",
-                "Writing a polite reply",
-
-                "Open-ended conversation",
-                "Informal conversation",
-                "Formal conversation",
-                "Semi-formal conversation",
-                "General conversation",
-                "Friendly discussion",
-                "Opinion-based conversation",
-                "Experience-based conversation",
-                "Scenario-based conversation",
-                "Problem-based conversation"
             ]
         }
-
-        self._logged = False
-
-        self.load_model_use_mmap = True
-        self.load_model_use_mlock = False
-        self.load_model_verbose = False
-
-        self.judge_llm_use_mmap=True
-        self.judge_llm_use_mlock=False
-        self.judge_llm_verbose=False
 
         self.language_configs = {
             "fa": {
@@ -855,276 +549,16 @@ class SyntheticDatasetConfig:
                     "در صورت داشتن هرگونه سؤال دیگر",
                     "من نمی‌توانم به اینترنت دسترسی داشته باشم"
                 ]
-            },
-
-            "en": {
-                "name": "English",
-                "native": "English",
-                "script_min": 0.65,
-                "prompt": "All user and assistant content must be written in natural, fluent, idiomatic English. Avoid literal translations, unnatural phrasing and repetitive templates.",
-                "tasks": [
-                    "Starting a conversation",
-                    "Continuing a conversation",
-                    "Responding to a message",
-                    "Answering a question",
-                    "Asking a question",
-                    "Asking a follow-up question",
-                    "Asking a related question",
-                    "Requesting information",
-                    "Asking for help",
-                    "Asking for an explanation",
-                    "Asking for more explanation",
-                    "Asking for an example",
-                    "Asking for guidance",
-                    "Asking for a recommendation",
-                    "Asking for advice",
-                    "Asking for an opinion",
-                    "Asking for confirmation",
-                    "Asking someone to repeat",
-                    "Asking for simplification",
-                    "Requesting more details",
-                    "Clarifying ambiguity",
-                    "Resolving a misunderstanding",
-                    "Following up on a request",
-                    "Correcting a previous request",
-                    "Changing a request",
-                    "Adding information",
-                    "Removing information from a request",
-                    "Referring to previous conversation",
-                    "Referring to a previous answer",
-                    "Continuing from previous context",
-                    "Describing a problem",
-                    "Describing a situation",
-                    "Asking for a solution",
-                    "Troubleshooting",
-                    "Problem solving",
-                    "Evaluating solutions",
-                    "Choosing between options",
-                    "Decision making",
-                    "Comparing options",
-                    "Evaluating advantages and disadvantages",
-                    "Evaluating consequences",
-                    "Asking for feedback",
-                    "Giving feedback",
-                    "Expressing an opinion",
-                    "Expressing a preference",
-                    "Expressing agreement",
-                    "Expressing disagreement",
-                    "Disagreeing politely",
-                    "Reaching an agreement",
-                    "Negotiation",
-                    "Bargaining",
-                    "Making a suggestion",
-                    "Accepting a suggestion",
-                    "Rejecting a suggestion",
-                    "Thanking",
-                    "Apologizing",
-                    "Accepting an apology",
-                    "Congratulating",
-                    "Showing sympathy",
-                    "Encouraging someone",
-                    "Inviting someone",
-                    "Accepting an invitation",
-                    "Declining an invitation",
-                    "Calming someone down",
-                    "Responding with empathy",
-                    "Responding to criticism",
-                    "Responding to a complaint",
-                    "Handling a sensitive conversation",
-                    "Coordination",
-                    "Planning",
-                    "Teaching",
-                    "Step-by-step instruction",
-                    "Practice",
-                    "Language correction",
-                    "Sentence correction",
-                    "Rewriting",
-                    "Changing tone",
-                    "Simplifying",
-                    "Conversational translation",
-                    "Writing a suitable reply",
-                    "Summarizing a conversation",
-                    "Wrapping up a conversation",
-                    "Reaching a conclusion",
-                    "Continuing a scenario",
-                    "Conflict resolution",
-                    "Customer support",
-                    "Technical support",
-                    "Service conversation",
-                    "Work conversation",
-                    "Social conversation",
-                    "Friendly conversation",
-                    "Formal conversation",
-                    "Informal conversation",
-                    "Open-ended conversation"
-                ],
-                "styles": [
-                    "Conversational",
-                    "Natural and everyday",
-                    "Friendly",
-                    "Warm and friendly",
-                    "Casual",
-                    "Informal",
-                    "Formal",
-                    "Semi-formal",
-                    "Polite",
-                    "Short and natural",
-                    "Short and precise",
-                    "Brief",
-                    "Explanatory",
-                    "Detailed explanatory",
-                    "Direct",
-                    "Indirect",
-                    "Calm and patient",
-                    "Empathetic",
-                    "Supportive",
-                    "Encouraging",
-                    "Professional",
-                    "Practical",
-                    "Simple and clear",
-                    "Educational",
-                    "Technical",
-                    "Technical and specialized",
-                    "Analytical",
-                    "Comparative",
-                    "Scenario-based",
-                    "Context-aware",
-                    "Conversation-driven",
-                    "Experience-based",
-                    "Assertive",
-                    "Flexible",
-                    "Neutral",
-                    "Serious",
-                    "Positive",
-                    "Realistic",
-                    "Natural and casual",
-                    "Polite and formal",
-                    "Polite and friendly"
-                ],
-                "audiences": [
-                    "General user",
-                    "Beginner user",
-                    "Experienced user",
-                    "Stranger",
-                    "New acquaintance",
-                    "Friend",
-                    "Family member",
-                    "Coworker",
-                    "Manager",
-                    "Employee",
-                    "Customer",
-                    "Seller",
-                    "Support agent",
-                    "Specialist",
-                    "Service representative",
-                    "Technical specialist",
-                    "Teacher",
-                    "Student",
-                    "University student",
-                    "Professor",
-                    "Traveler",
-                    "Host",
-                    "Guest",
-                    "Doctor",
-                    "Nurse",
-                    "Formal audience",
-                    "Informal audience",
-                    "Professional audience",
-                    "Technical audience",
-                    "Business manager",
-                    "Business owner",
-                    "Dissatisfied customer",
-                    "Upset person",
-                    "Worried person",
-                    "Angry person",
-                    "Confused person",
-                    "Curious person",
-                    "Impatient person",
-                    "Inexperienced person",
-                    "Experienced practitioner",
-                    "Developer",
-                    "Engineer",
-                    "Researcher",
-                    "Business professional"
-                ],
-                "question_styles": [
-                    "Greeting",
-                    "Conversation opener",
-                    "Direct question",
-                    "Short question",
-                    "Conversational question",
-                    "Formal question",
-                    "Informal question",
-                    "Friendly question",
-                    "Polite question",
-                    "Follow-up question",
-                    "Related question",
-                    "Question based on a previous answer",
-                    "Context-based question",
-                    "Question about a previous topic",
-                    "Multi-part question",
-                    "Indirect question",
-                    "Ambiguous question",
-                    "Clarifying question",
-                    "How-to question",
-                    "Why question",
-                    "What-if question",
-                    "Hypothetical question",
-                    "Comparison question",
-                    "Decision-oriented question",
-                    "Problem-based question",
-                    "Scenario-based question",
-                    "Experience-based question",
-                    "Opinion-seeking question",
-                    "Direct request",
-                    "Short request",
-                    "Conversational request",
-                    "Polite request",
-                    "Request for help",
-                    "Request for information",
-                    "Request for explanation",
-                    "Request for more explanation",
-                    "Request for an example",
-                    "Request for a suggestion",
-                    "Request for guidance",
-                    "Request for an opinion",
-                    "Request for confirmation",
-                    "Request to repeat",
-                    "Request for a simpler explanation",
-                    "Request for more details",
-                    "Problem statement",
-                    "Situation description",
-                    "Need statement",
-                    "Preference statement",
-                    "Opinion statement",
-                    "Disagreement statement",
-                    "Agreement statement",
-                    "Correction of a previous request",
-                    "Change to a previous request",
-                    "Adding new information",
-                    "Reference to previous conversation",
-                    "Reference to previous answer",
-                    "Continuation of previous topic",
-                    "Short message",
-                    "Everyday message",
-                    "Friendly message",
-                    "Work message",
-                    "Formal message",
-                    "Informal message",
-                    "Service message",
-                    "Support message",
-                    "Phone message",
-                    "Online message"
-                ],
-                "bad_patterns": [
-                    "as an ai",
-                    "as an ai language model",
-                    "i hope this helps",
-                    "if you have any further questions",
-                    "i cannot browse the internet"
-                ]
             }
         }
+
+        self._logged = False
+
+        self.load_model_use_mmap = True
+        self.load_model_use_mlock = False
+        self.load_model_verbose = False
+
+        self.resume = False
 
         self.stats = {
             "attempts": 0,
@@ -1138,201 +572,65 @@ class SyntheticDatasetConfig:
         }
 
         self.system_prompt = """
-        You are a professional synthetic instruction-tuning dataset generator.
+        You are a professional synthetic dataset generator.
 
-        Do not use reasoning or thinking mode.
-        Do not generate <think> or </think> tags.
-        Answer directly without hidden reasoning.
+        Generate realistic, diverse, accurate, useful and natural Persian user-assistant multi-turn conversations.
 
-        Generate realistic, diverse, accurate, useful and natural user-assistant conversations.
-
-        Avoid:
-        - artificial prompts
-        - repetitive templates
-        - generic filler
-        - fabricated information
-        - unnecessary verbosity
-        - meta commentary
-        - references to the dataset
-        - references to generation instructions
-        - statements about being an AI
-        - reasoning traces
-        - chain-of-thought
-
-        For medical topics provide general educational information only and never diagnose a person, prescribe treatment or invent clinical facts.
-
-        Return only valid JSON.
+        Rules:
+        - Do not use thinking or reasoning mode.
+        - Never output <think> or </think> or chain-of-thought.
+        - Keep the conversation coherent across all turns.
+        - Avoid repetition, templates, filler, artificial or meta content.
+        - Do not mention being an AI, the dataset, or these instructions.
+        - Use natural Persian; English is allowed only when necessary for proper names, technical terms, products, code, programming languages, or standard abbreviations.
+        - For medical topics, provide general educational information only; do not diagnose, prescribe, or invent clinical facts.
+        - Return only valid JSON.
         """
-
-        self.intro_fa = "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
-        self.intro_en = "Generate a high-quality multi-turn instruction-tuning example."
 
         self.prompt_config = {
             "fa": {
-                "intro": {
-                    "single": "یک نمونه تک‌مرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن.",
-                    "multi": "یک نمونه مکالمه چندمرحله‌ای باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن."
-                },
+                "intro": "یک مکالمه چندمرحله‌ای طبیعی، متنوع و باکیفیت برای دیتاست آموزش و فاین‌تیون مدل زبانی تولید کن.",
 
-                "turn_instruction": {
-                    "single": """
-        فقط یک نوبت سؤال و پاسخ تولید کن.
-
-        خروجی باید دقیقاً شامل یک پیام user و یک پیام assistant باشد.
+                "turn_instruction": """
+        مکالمه حداکثر {max_turns} نوبت داشته باشد و به‌صورت user → assistant ادامه پیدا کند.
+        هر پیام باید با context قبلی مرتبط باشد و مکالمه انسجام معنایی داشته باشد.
+        پیام‌های user باید طبیعی و شبیه گفت‌وگوی واقعی باشند؛ تغییر موضوع ناگهانی، تکرار سؤال یا پاسخ و الگوهای مصنوعی ممنوع است.
+        در صورت نیاز از ارجاع‌های طبیعی مانند «این مورد»، «همین راهکار» و «اگر این‌طور باشد» استفاده کن.
         """,
 
-                    "multi": """
-        یک گفت‌وگوی چندمرحله‌ای تولید کن.
-
-        تعداد نوبت‌های گفت‌وگو باید بین {min_turns} و {max_turns} نوبت باشد.
-        هر نوبت شامل یک پیام user و یک پیام assistant است.
-
-        گفت‌وگو باید پیوستگی معنایی داشته باشد.
-        هر پیام user بعدی باید بر اساس پاسخ قبلی یا context مکالمه شکل بگیرد.
-        کاربر نباید بدون ارتباط موضوع را تغییر دهد.
-        در برخی نوبت‌ها می‌توان از ارجاع‌های طبیعی مانند «این مورد»، «همین راهکار»، «اگر این‌طور باشد» و موارد مشابه استفاده کرد.
-        دستیار باید تمام context قبلی مکالمه را در نظر بگیرد.
-        از تکرار سؤال یا پاسخ قبلی خودداری کن.
-        مکالمه باید شبیه یک گفت‌وگوی واقعی و طبیعی باشد.
-        """
-                },
-
                 "instructions": """
-        سؤال‌ها باید کاملاً طبیعی و شبیه سؤال‌هایی باشند که یک فارسی‌زبان واقعی می‌پرسد.
-        پاسخ‌های دستیار باید دقیق، مفید، مرتبط، روان و متناسب با context مکالمه باشند.
+        محتوا باید دقیق، مفید، مرتبط، روان و کاملاً طبیعی باشد.
+        از ترجمه تحت‌اللفظی، کلیشه، filler، تکرار و شروع‌های مصنوعی مانند «حتماً» و «البته» به‌صورت تکراری خودداری کن.
 
-        از ترجمه تحت‌اللفظی انگلیسی خودداری کن.
-        از ساختارهای تکراری و کلیشه‌ای استفاده نکن.
-        پاسخ‌ها را با عبارت‌هایی مانند «حتماً»، «البته»، «امیدوارم این پاسخ مفید باشد» به شکل تکراری شروع یا تمام نکن.
+        قواعد فارسی:
+        - فقط از «ی» و «ک» فارسی استفاده کن.
+        - نیم‌فاصله و علائم نگارشی فارسی را درست و طبیعی به‌کار ببر.
+        - واژه‌های انگلیسی فقط برای نام خاص، فناوری، اصطلاح تخصصی، محصول، کد، زبان برنامه‌نویسی یا مخفف استاندارد مجاز است.
 
-        در متن فارسی:
-        - از «ی» و «ک» فارسی استفاده کن.
-        - از نیم‌فاصله در موارد مناسب مانند «می‌شود»، «می‌کند»، «داده‌ها»، «نرم‌افزارها» و «بهینه‌سازی» استفاده کن.
-        - از علائم نگارشی فارسی مانند «،»، «؛» و «؟» طبیعی استفاده کن.
-
-        واژه‌های انگلیسی فقط برای اصطلاح تخصصی، نام فناوری، نام محصول، کد، زبان برنامه‌نویسی یا نام خاص مجاز هستند.
-
-        برای موضوعات پزشکی فقط اطلاعات عمومی و آموزشی ارائه کن و تشخیص، نسخه یا تصمیم درمانی شخصی ارائه نکن.
-
-        برای مسائل استدلالی، نتیجه و توضیح لازم برای درک پاسخ را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
+        موضوعات پزشکی فقط به‌صورت عمومی و آموزشی باشند؛ تشخیص، تجویز یا تصمیم درمانی شخصی ارائه نکن.
+        در مسائل استدلالی، نتیجه و توضیح لازم را ارائه کن اما زنجیره تفکر خصوصی را افشا نکن.
         """,
 
                 "output": """
-        خروجی فقط JSON معتبر باشد.
-
-        ساختار خروجی:
-        {{
-          "messages": [
-            {{
-              "role": "user",
-              "content": "..."
-            }},
-            {{
-              "role": "assistant",
-              "content": "..."
-            }}
-          ]
-        }}
-        """,
-
-                "continuation": {
-                    "single": "در حالت تک‌مرحله‌ای دقیقاً فقط دو پیام تولید کن: user → assistant.",
-                    "multi": "در حالت چندمرحله‌ای، messages باید با همین الگو ادامه پیدا کند: user → assistant → user → assistant → ..."
-                }
-            },
-
-            "en": {
-                "intro": {
-                    "single": "Generate a high-quality single-turn instruction-tuning example.",
-                    "multi": "Generate a high-quality multi-turn instruction-tuning example."
-                },
-
-                "turn_instruction": {
-                    "single": """
-        Generate exactly one user message followed by one assistant message.
-
-        The output must contain exactly two messages.
-        """,
-
-                    "multi": """
-        Generate a multi-turn conversation.
-
-        The conversation must contain between {min_turns} and {max_turns} turns.
-        Each turn consists of one user message followed by one assistant message.
-
-        The conversation must maintain semantic continuity.
-        Each following user message should naturally build on previous answers or conversation context.
-        Do not abruptly switch to unrelated topics.
-        Some user messages may naturally refer to previous context.
-        The assistant must consider the full conversation history when responding.
-        Avoid repeating previous questions or answers.
-        The conversation must feel realistic and natural.
-        """
-                },
-
-                "instructions": """
-        The user messages must be realistic and natural.
-        The assistant responses must be accurate, useful, relevant and complete.
-
-        Avoid repetitive structures, generic filler, artificial benchmark prompts and meta commentary.
-        """,
-
-                "output": """
-        Return only valid JSON.
-
-        Expected structure:
-        {{
-          "messages": [
-            {{
-              "role": "user",
-              "content": "..."
-            }},
-            {{
-              "role": "assistant",
-              "content": "..."
-            }}
-          ]
-        }}
-        """,
-
-                "continuation": {
-                    "single": "For single-turn mode, return exactly two messages: user → assistant.",
-                    "multi": "For multi-turn mode, continue the same pattern: user → assistant → user → assistant → ..."
-                }
-            }
-        }
-
-        self.judge_config = {
-            "system_prompt": "You are a strict dataset quality evaluator. Return only valid JSON.",
-
-            "user_prompt": """
-        این نمونه دیتاست instruction-tuning را از نظر کیفیت بررسی کن.
-
         فقط JSON معتبر برگردان:
-        {{
-          "score": 0,
-          "relevant": true,
-          "accurate": true,
-          "natural": true,
-          "complete": true,
-          "acceptable": true
-        }}
 
-        نمونه:
-        {sample}
+        {{
+          "messages": [
+            {{"role": "user", "content": "..."}},
+            {{"role": "assistant", "content": "..."}}
+          ]
+        }}
         """,
 
-            "temperature": 0.1,
-            "top_p": 0.9,
-            "max_tokens": 200,
-            "response_format": {
-                "type": "json_object"
+                "continuation": """
+        messages را تا حداکثر {max_turns} نوبت با همین ترتیب ادامه بده:
+        user → assistant → user → assistant → ...
+        """
             }
         }
 
         self.difficulties = {
-            "fa": ["مبتدی", "متوسط", "پیشرفته", "تخصصی"],
-            "en": ["Beginner", "Intermediate", "Advanced", "Expert"]
+            "fa": ["مبتدی", "متوسط", "پیشرفته", "تخصصی"]
         }
 
         self.generation_config = {
@@ -1376,9 +674,6 @@ class SyntheticDatasetConfig:
         lines.append(f"Load_Model_Use_MMap       : {self.load_model_use_mmap}")
         lines.append(f"Load_Model_Use_MLock      : {self.load_model_use_mlock}")
         lines.append(f"Load_Model_Verbose        : {self.load_model_verbose}")
-        lines.append(f"judge_llm_use_mmap        : {self.judge_llm_use_mmap}")
-        lines.append(f"judge_llm_use_mlock       : {self.judge_llm_use_mlock}")
-        lines.append(f"judge_llm_verbose         : {self.judge_llm_verbose}")
 
         lines.append("")
         lines.append("[OUTPUT]")
@@ -1403,29 +698,16 @@ class SyntheticDatasetConfig:
 
         lines.append("")
         lines.append("[VALIDATION]")
-        lines.append(f"Min_User_Words            : {self.min_user_words}")
-        lines.append(f"Max_User_Words            : {self.max_user_words}")
-        lines.append(f"Min_Assistant_Words       : {self.min_assistant_words}")
-        lines.append(f"Max_Assistant_Words       : {self.max_assistant_words}")
         lines.append(f"Min_Quality_Score         : {self.min_quality_score}")
 
         lines.append("")
         lines.append("[MULTI TURN]")
-        lines.append(f"Multi_Turn                : {self.multi_turn}")
-        lines.append(f"Min_Turns                 : {self.min_turns}")
         lines.append(f"Max_Turns                 : {self.max_turns}")
-
-        lines.append("")
-        lines.append("[QUALITY JUDGE]")
-        lines.append(f"Enable_Quality_Judge      : {self.enable_quality_judge}")
-        lines.append(f"Judge_Model_Path          : {self.judge_model_path}")
-        lines.append(f"Judge_Config              : {repr(self.judge_config)}")
 
         lines.append("")
         lines.append("[TOPICS]")
         lines.append(f"Topics_Languages          : {list(self.topics.keys())}")
         lines.append(f"Topics_Count_FA           : {len(self.topics.get('fa', []))}")
-        lines.append(f"Topics_Count_EN           : {len(self.topics.get('en', []))}")
 
         for language, topics in self.topics.items():
             lines.append(f"Topics_{language.upper()}     : {topics}")
@@ -1444,41 +726,20 @@ class SyntheticDatasetConfig:
             lines.append(f"Native                    : {config.get('native')}")
             lines.append(f"Script_Min                : {config.get('script_min')}")
             lines.append(f"Prompt                    : {config.get('prompt')}")
-
-            lines.append(
-                f"Tasks_Count               : {len(config.get('tasks', []))}"
-            )
-            lines.append(
-                f"Styles_Count              : {len(config.get('styles', []))}"
-            )
-            lines.append(
-                f"Audiences_Count           : {len(config.get('audiences', []))}"
-            )
-            lines.append(
-                f"Question_Styles_Count     : {len(config.get('question_styles', []))}"
-            )
-            lines.append(
-                f"Bad_Patterns_Count        : {len(config.get('bad_patterns', []))}"
-            )
-
+            lines.append(f"Tasks_Count               : {len(config.get('tasks', []))}")
+            lines.append(f"Styles_Count              : {len(config.get('styles', []))}")
+            lines.append(f"Audiences_Count           : {len(config.get('audiences', []))}")
+            lines.append(f"Question_Styles_Count     : {len(config.get('question_styles', []))}")
+            lines.append(f"Bad_Patterns_Count        : {len(config.get('bad_patterns', []))}")
             lines.append(f"Tasks                     : {config.get('tasks')}")
             lines.append(f"Styles                    : {config.get('styles')}")
             lines.append(f"Audiences                 : {config.get('audiences')}")
-            lines.append(
-                f"Question_Styles           : {config.get('question_styles')}"
-            )
-            lines.append(
-                f"Bad_Patterns              : {config.get('bad_patterns')}"
-            )
+            lines.append(f"Question_Styles           : {config.get('question_styles')}")
+            lines.append(f"Bad_Patterns              : {config.get('bad_patterns')}")
 
         lines.append("")
         lines.append("[SYSTEM PROMPT]")
         lines.append(self.system_prompt)
-
-        lines.append("")
-        lines.append("[INTRO PROMPTS]")
-        lines.append(f"Intro_FA                  : {self.intro_fa}")
-        lines.append(f"Intro_EN                  : {self.intro_en}")
 
         lines.append("")
         lines.append("[PROMPT CONFIG]")
@@ -1496,11 +757,7 @@ class SyntheticDatasetConfig:
 
         lines.append("-" * 113)
         text = "\n".join(lines)
-        text = re.sub(
-            r"\\u([0-9a-fA-F]{4})",
-            lambda m: chr(int(m.group(1), 16)),
-            text
-        )
+        text = re.sub(r"\\u([0-9a-fA-F]{4})", lambda m: chr(int(m.group(1), 16)), text)
 
         return text
 

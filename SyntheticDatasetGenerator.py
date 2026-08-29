@@ -1,3 +1,5 @@
+import os
+
 from llama_cpp import Llama
 from datetime import datetime
 import json
@@ -57,28 +59,35 @@ class PersianConversationGenerator:
             content = chunk["choices"][0]["delta"].get("content", "")
             if content:
                 response += content
-                if self.config.Show_Generated_Output:
-                    self.logger.info(content, end="", flush=True)
+
+        if self.config.Show_Generated_Output:
+            self.logger.info(response)
+
         elapsed = datetime.now() - start_time
         self.logger.info(f"\nGeneration time: {elapsed.seconds // 60:02d}:{elapsed.seconds % 60:02d}")
         return topic, response
 
     def generate_dataset(self):
-        if self.config.max_tokens is None:
-            max_tokens = self.config.max_tokens
-        if self.config.temperature is None:
-            temperature = self.config.temperature
         dataset = []
+        if os.path.exists(self.output_file):
+            try:
+                existing_df = pd.read_parquet(self.output_file)
+                dataset = existing_df.to_dict("records")
+                self.logger.info(f"Resuming from {len(dataset)} conversations")
+            except Exception:
+                dataset = []
+
         self.logger.info("=" * 60)
         self.logger.info(f"Generating {self.config.num_conversations} conversations")
         self.logger.info(f"Output: {self.output_file}")
         self.logger.info("=" * 60)
 
-        for i in range(self.config.num_conversations):
+        for i in range(len(dataset), self.config.num_conversations):
             try:
                 topic, response = self.generate_conversation(conversation_index=i + 1,
                                                              total_conversations=self.config.num_conversations,
-                                                             max_turns=self.config.max_turns, max_tokens=self.config.max_tokens,
+                                                             max_turns=self.config.max_turns,
+                                                             max_tokens=self.config.max_tokens,
                                                              temperature=self.config.temperature)
                 clean_response = response.strip()
 
@@ -99,13 +108,16 @@ class PersianConversationGenerator:
 
                 conversation["messages"] = conversation["messages"][:32]
 
-                dataset.append({
-                    "id": i + 1,
-                    "topic": topic,
-                    "messages": json.dumps(conversation["messages"], ensure_ascii=False)
-                })
+                dataset.append(
+                    {"id": i + 1, "topic": topic, "messages": json.dumps(conversation["messages"], ensure_ascii=False)})
+
+                df = pd.DataFrame(dataset)
+                self.config.output_temp_file = str(self.config.output_temp_file) + ".tmp"
+                df.to_parquet(self.config.output_temp_file, index=False)
+                os.replace(self.config.output_temp_file, self.output_file)
 
                 self.logger.info("Conversation saved successfully.")
+
             except json.JSONDecodeError:
                 self.logger.info("Error: Model returned invalid JSON.")
                 self.logger.info("Conversation skipped.")
@@ -114,8 +126,6 @@ class PersianConversationGenerator:
                 self.logger.info("Conversation skipped.")
 
         df = pd.DataFrame(dataset)
-
-        df.to_parquet(self.output_file, index=False)
 
         log_text = "\n" + "=" * 60 + "\n"
         log_text += "DATASET COMPLETED\n"

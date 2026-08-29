@@ -12,7 +12,7 @@ class SyntheticDatasetConfig:
 
         self.model_path = r"D:\TFSProjects\HelinusCollections\AI\AllModels\Gemma3_Models\gemma-3-4b-it-Q4_K_M.gguf"
         self.output_file = "persian_conversations.parquet"
-
+        self.output_temp_file="temp_persian_conversations"
         self.num_conversations = 100
         self.n_ctx = 8192
         self.n_threads = 4
@@ -306,7 +306,7 @@ class SyntheticDatasetConfig:
     ]
 }}
 """
-        self.Show_Generated_Output=False
+        self.Show_Generated_Output=True
         self.config_text = self._build_config_text()
 
     def _build_config_text(self) -> str:
@@ -324,8 +324,10 @@ class SyntheticDatasetConfig:
         lines.append(f"N_Threads                 : {self.n_threads}")
         lines.append(f"N_Batch                   : {self.n_batch}")
         lines.append(f"N_GPU_Layers              : {self.n_gpu_layers}")
-        lines.append(f"Show_Generated_Output     : {self.Show_Generated_Output}")
         lines.append(f"verbose                   : {self.verbose}")
+        lines.append(f"Show_Generated_Output     : {self.Show_Generated_Output}")
+        lines.append(f"output_file               : {self.output_file}")
+
 
         lines.append("")
         lines.append("[DATASET]")

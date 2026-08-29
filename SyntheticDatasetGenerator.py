@@ -117,11 +117,12 @@ class PersianConversationGenerator:
 
         df.to_parquet(self.output_file, index=False)
 
-        self.logger.info("\n" + "=" * 60)
-        self.logger.info("DATASET COMPLETED")
-        self.logger.info("=" * 60)
-        self.logger.info(f"Generated: {len(df)} conversations")
-        self.logger.info(f"File: {self.output_file}")
-        self.logger.info("=" * 60)
+        log_text = "\n" + "=" * 60 + "\n"
+        log_text += "DATASET COMPLETED\n"
+        log_text += "=" * 60 + "\n"
+        log_text += f"Generated: {len(df)} conversations\n"
+        log_text += f"File: {self.output_file}\n"
+        log_text += "=" * 60
+        self.logger.info(log_text)
 
         return df

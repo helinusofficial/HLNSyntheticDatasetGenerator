@@ -3,7 +3,7 @@ from llama_cpp import Llama
 from datetime import datetime
 import json
 import pandas as pd
-
+import random
 
 class PersianConversationGenerator:
     def __init__(self,logger, config):
@@ -12,7 +12,10 @@ class PersianConversationGenerator:
         self.model_path = self.config.model_path
         self.output_file = self.config.output_file
 
-        self.topics = self.config.topics
+        self.topics = self.config.topics.copy()
+        random.shuffle(self.topics)
+        self.topic_index = 0
+
         self.topic_index = 0
         self.logger.info("Loading model...")
         self.llm = Llama(

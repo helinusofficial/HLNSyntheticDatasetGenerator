@@ -14,7 +14,7 @@ class SyntheticDatasetConfig:
         self.output_file = "persian_conversations.parquet"
         self.output_temp_file="temp_persian_conversations"
 
-        self.num_conversations = 368
+        self.num_conversations = 361
         self.save_interval = 1
         self.n_ctx = 8192
         self.n_threads = 2

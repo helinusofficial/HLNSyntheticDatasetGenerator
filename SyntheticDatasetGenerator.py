@@ -36,26 +36,96 @@ class PersianConversationGenerator:
 
         return topic
 
-    def generate_conversation(self, conversation_index, total_conversations, max_turns=None, max_tokens=None,
-                              temperature=None):
-        if max_turns is None:
-            max_turns = self.config.max_turns
+    def get_random_variation(self):
+        return {
+            "conversation_style": random.choice([
+                "صمیمی و روزمره",
+                "رسمی و مؤدبانه",
+                "نیمه‌رسمی",
+                "آرام و دوستانه",
+                "کمی جدی",
+                "کنجکاوانه",
+                "مستقیم و کوتاه",
+                "توضیحی و مفصل"
+            ]),
+
+            "opening_style": random.choice([
+                "مکالمه با یک سؤال شروع شود.",
+                "مکالمه با بیان یک موضوع یا مشکل شروع شود.",
+                "مکالمه با یک واکنش به یک اتفاق شروع شود.",
+                "مکالمه با یک توضیح کوتاه شروع شود.",
+                "مکالمه با یک درخواست شروع شود.",
+                "مکالمه با بیان یک تجربه شروع شود.",
+                "مکالمه با یک جمله طبیعی و غیرمستقیم شروع شود."
+            ]),
+
+            "interaction_style": random.choice([
+                "افراد بیشتر سؤال و جواب داشته باشند.",
+                "یکی از افراد بیشتر توضیح دهد.",
+                "هر دو نفر تقریباً به یک اندازه صحبت کنند.",
+                "در مکالمه یک سوءتفاهم کوچک ایجاد و سپس برطرف شود.",
+                "یکی از افراد نظر متفاوتی داشته باشد.",
+                "مکالمه به‌صورت طبیعی از یک نکته به نکته دیگری مرتبط با موضوع برسد.",
+                "یکی از افراد در ابتدا اطلاعات کاملی ندهد و طرف مقابل با سؤال‌های مناسب موضوع را روشن کند."
+            ]),
+
+            "response_style": random.choice([
+                "پاسخ‌ها کوتاه و طبیعی باشند.",
+                "پاسخ‌ها ترکیبی از جمله‌های کوتاه و متوسط باشند.",
+                "گاهی پاسخ‌ها توضیحی و چندجمله‌ای باشند.",
+                "طول پاسخ‌ها متغیر باشد و همه پاسخ‌ها یک اندازه نباشند."
+            ])
+        }
+
+    def generate_conversation(self, conversation_index, total_conversations, max_tokens=None,
+                          temperature=None):
+
         if max_tokens is None:
             max_tokens = self.config.max_tokens
+
         if temperature is None:
             temperature = self.config.temperature
+
+        max_turns = random.randint(
+            self.config.min_turns,
+            self.config.max_turns
+        )
+
         max_messages = max_turns * 2
 
         topic = self.get_next_topic()
         self.logger.info(f"Conversation [{conversation_index}/{total_conversations}] | Topic: {topic}")
+        variation = self.get_random_variation()
+
         messages = [
-            {"role": "system", "content": self.config.system_prompt},
-            {"role": "user", "content": self.config.conversation_prompt.format(topic=topic, max_turns=max_turns,
-                                                                               max_messages=max_messages)}
+            {
+                "role": "system",
+                "content": self.config.system_prompt
+            },
+            {
+                "role": "user",
+                "content": self.config.conversation_prompt.format(
+                    topic=topic,
+                    max_turns=max_turns,
+                    max_messages=max_messages,
+                    conversation_style=variation["conversation_style"],
+                    opening_style=variation["opening_style"],
+                    interaction_style=variation["interaction_style"],
+                    response_style=variation["response_style"]
+                )
+            }
         ]
+
         start_time = datetime.now()
-        output = self.llm.create_chat_completion(messages=messages, max_tokens=max_tokens, temperature=temperature,
-                                                 stream=True)
+        output = self.llm.create_chat_completion(
+            messages=messages,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=self.config.top_p,
+            top_k=self.config.top_k,
+            repeat_penalty=self.config.repeat_penalty,
+            stream=True
+        )
         response = ""
         for chunk in output:
             content = chunk["choices"][0]["delta"].get("content", "")
@@ -95,11 +165,12 @@ class PersianConversationGenerator:
 
         for i in range(len(dataset), self.config.num_conversations):
             try:
-                topic, response = self.generate_conversation(conversation_index=i + 1,
-                                                             total_conversations=self.config.num_conversations,
-                                                             max_turns=self.config.max_turns,
-                                                             max_tokens=self.config.max_tokens,
-                                                             temperature=self.config.temperature)
+                topic, response = self.generate_conversation(
+                    conversation_index=i + 1,
+                    total_conversations=self.config.num_conversations,
+                    max_tokens=self.config.max_tokens,
+                    temperature=self.config.temperature
+                )
                 clean_response = response.strip()
 
                 if clean_response.startswith("```"):

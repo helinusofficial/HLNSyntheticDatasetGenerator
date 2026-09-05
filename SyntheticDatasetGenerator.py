@@ -144,7 +144,7 @@ class PersianConversationGenerator:
             f"Conversation [{conversation_index}/{total_conversations}] | "
             f"Generation time: {hours:02d}:{minutes:02d}:{seconds:02d}"
         )
-        return topic, response
+        return topic, response, max_messages
 
     def generate_dataset(self):
         dataset = []
@@ -163,7 +163,7 @@ class PersianConversationGenerator:
 
         for i in range(len(dataset), self.config.num_conversations):
             try:
-                topic, response = self.generate_conversation(
+                topic, response, max_messages = self.generate_conversation(
                     conversation_index=i + 1,
                     total_conversations=self.config.num_conversations,
                     max_tokens=self.config.max_tokens,
@@ -186,7 +186,7 @@ class PersianConversationGenerator:
                     self.logger.info("Invalid response: messages is not a list")
                     continue
 
-                conversation["messages"] = conversation["messages"][:32]
+                conversation["messages"] = conversation["messages"][:max_messages]
 
                 dataset.append(
                     {

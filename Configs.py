@@ -543,9 +543,9 @@ class SyntheticDatasetConfig:
 
         lines.append(f"Conversation_Styles       : {self.conversation_styles}")
         lines.append(f"Opening_Styles            : {self.opening_styles}")
-        lines.append(f"Interaction_Styles       : {self.interaction_styles}")
+        lines.append(f"Interaction_Styles        : {self.interaction_styles}")
         lines.append(f"Response_Styles           : {self.response_styles}")
-        lines.append(f"Relationship_Styles      : {self.relationship_styles}")
+        lines.append(f"Relationship_Styles       : {self.relationship_styles}")
         lines.append(f"Goal_Styles               : {self.goal_styles}")
         lines.append(f"Ending_Styles             : {self.ending_styles}")
         lines.append(f"Naturalness_Styles        : {self.naturalness_styles}")

@@ -17,7 +17,7 @@ class SyntheticDatasetConfig:
         self.num_conversations = 361
         self.save_interval = 1
         self.n_ctx = 8192
-        self.n_threads = 2
+        self.n_threads = 4
         self.n_batch = 1024
         self.n_gpu_layers = 0
 

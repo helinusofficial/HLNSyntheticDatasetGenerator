@@ -376,6 +376,10 @@ class SyntheticDatasetConfig:
         - نحوه شروع: {opening_style}
         - الگوی تعامل: {interaction_style}
         - سبک پاسخ‌ها: {response_style}
+        - رابطه بین افراد: {relationship_style}
+        - هدف مکالمه: {goal_style}
+        - نحوه پایان: {ending_style}
+        - ویژگی طبیعی بودن: {naturalness_style}
 
         قوانین:
 

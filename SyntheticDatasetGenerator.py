@@ -38,37 +38,15 @@ class PersianConversationGenerator:
 
     def get_random_variation(self):
         return {
-            "conversation_style": random.choice(
-                self.config.conversation_styles
-            ),
-
-            "opening_style": random.choice(
-                self.config.opening_styles
-            ),
-
-            "interaction_style": random.choice(
-                self.config.interaction_styles
-            ),
-
-            "response_style": random.choice(
-                self.config.response_styles
-            ),
-
-            "relationship_style": random.choice(
-                self.config.relationship_styles
-            ),
-
-            "goal_style": random.choice(
-                self.config.goal_styles
-            ),
-
-            "ending_style": random.choice(
-                self.config.ending_styles
-            ),
-
-            "naturalness_style": random.choice(
-                self.config.naturalness_styles
-            )
+            "conversation_style": random.choice(self.config.conversation_styles),
+            "opening_style": random.choice(self.config.opening_styles),
+            "interaction_style": random.choice(self.config.interaction_styles),
+            "response_style": random.choice(self.config.response_styles),
+            "relationship_style": random.choice(self.config.relationship_styles),
+            "goal_style": random.choice(self.config.goal_styles),
+            "ending_style": random.choice(self.config.ending_styles),
+            "naturalness_style": random.choice(self.config.naturalness_styles),
+            "scenario_style": random.choice(self.config.scenario_styles)
         }
 
     def generate_conversation(self, conversation_index, total_conversations, max_tokens=None,
@@ -109,7 +87,8 @@ class PersianConversationGenerator:
                     relationship_style = variation["relationship_style"],
                     goal_style = variation["goal_style"],
                     ending_style = variation["ending_style"],
-                    naturalness_style = variation["naturalness_style"]
+                    naturalness_style = variation["naturalness_style"],
+                    scenario_style=variation["scenario_style"]
                 )
             }
         ]
